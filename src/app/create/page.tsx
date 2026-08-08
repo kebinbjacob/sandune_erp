@@ -45,21 +45,30 @@ function CreateForm() {
 
     if (isEmployeeForm) {
       try {
-        const empId = formData.employee_id.trim() || `EMP-${Math.floor(100 + Math.random() * 900)}`;
+        // Use timestamp-based ID to guarantee uniqueness
+        const empId = formData.employee_id.trim() || `EMP-${Date.now().toString().slice(-6)}`;
         await createEmployee({
           employee_id: empId,
           name: formData.name,
           role: formData.role,
-          department: formData.department,
-          project: formData.project,
-          email: formData.email,
-          phone: formData.phone,
+          department: formData.department || null,
+          project: formData.project || null,
+          // Send null for empty optional UNIQUE fields to avoid constraint violations
+          email: formData.email.trim() || null,
+          phone: formData.phone.trim() || null,
           status: formData.status,
         });
         router.push('/employees');
-      } catch (err: any) {
-        console.error('Error creating employee:', err);
-        setErrorMsg(err.message || 'Failed to create employee record');
+      } catch (err: unknown) {
+        const supaErr = err as { message?: string; details?: string; hint?: string; code?: string };
+        const msg = supaErr?.message || supaErr?.details || supaErr?.hint || JSON.stringify(err);
+        console.error('Error creating employee:', supaErr);
+        // Friendly messages for common constraint errors
+        if (supaErr?.code === '23505') {
+          setErrorMsg('A record with this Employee ID or Email already exists. Please use a unique value.');
+        } else {
+          setErrorMsg(msg || 'Failed to create employee. Please check all fields and try again.');
+        }
       } finally {
         setLoading(false);
       }

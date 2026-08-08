@@ -37,7 +37,8 @@ export async function createEmployee(employeeData: Partial<Employee>): Promise<E
     .single();
 
   if (error) {
-    console.error('Error creating employee in Supabase:', error);
+    console.error('Supabase error creating employee:', error);
+    // Re-throw the full Supabase error object so callers can inspect code/message/details
     throw error;
   }
   return data;

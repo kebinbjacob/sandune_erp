@@ -1,13 +1,15 @@
 -- Sandune Core HR & Supabase Integration Schema Definition
 
+-- ==========================================
 -- 1. Table Definitions
+-- ==========================================
 
 -- Table: employees
 CREATE TABLE IF NOT EXISTS employees (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  employee_id text,
+  employee_id text UNIQUE,
   name text NOT NULL,
-  email text,
+  email text UNIQUE,
   phone text,
   role text NOT NULL,
   department text,
@@ -28,7 +30,8 @@ CREATE TABLE IF NOT EXISTS attendance (
   check_out text,
   status text NOT NULL DEFAULT 'Present',
   notes text,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT unique_employee_date UNIQUE(employee_id, date)
 );
 
 -- Table: leave_requests
@@ -44,47 +47,53 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   created_at timestamptz DEFAULT now()
 );
 
+-- ==========================================
 -- 2. Enable Row Level Security (RLS)
+-- ==========================================
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
 
--- 3. RLS Policies permitting public/anon and authenticated users to SELECT, INSERT, UPDATE, DELETE
+-- ==========================================
+-- 3. RLS Policies (public/anon & authenticated)
+-- ==========================================
 
 -- Policies for employees table
-DROP POLICY IF EXISTS "Allow public select on employees" ON employees;
-DROP POLICY IF EXISTS "Allow public insert on employees" ON employees;
-DROP POLICY IF EXISTS "Allow public update on employees" ON employees;
-DROP POLICY IF EXISTS "Allow public delete on employees" ON employees;
+DROP POLICY IF EXISTS "Allow public and authenticated select on employees" ON employees;
+DROP POLICY IF EXISTS "Allow public and authenticated insert on employees" ON employees;
+DROP POLICY IF EXISTS "Allow public and authenticated update on employees" ON employees;
+DROP POLICY IF EXISTS "Allow public and authenticated delete on employees" ON employees;
 
-CREATE POLICY "Allow public select on employees" ON employees FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on employees" ON employees FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on employees" ON employees FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete on employees" ON employees FOR DELETE USING (true);
+CREATE POLICY "Allow public and authenticated select on employees" ON employees FOR SELECT TO public USING (true);
+CREATE POLICY "Allow public and authenticated insert on employees" ON employees FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated update on employees" ON employees FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated delete on employees" ON employees FOR DELETE TO public USING (true);
 
 -- Policies for attendance table
-DROP POLICY IF EXISTS "Allow public select on attendance" ON attendance;
-DROP POLICY IF EXISTS "Allow public insert on attendance" ON attendance;
-DROP POLICY IF EXISTS "Allow public update on attendance" ON attendance;
-DROP POLICY IF EXISTS "Allow public delete on attendance" ON attendance;
+DROP POLICY IF EXISTS "Allow public and authenticated select on attendance" ON attendance;
+DROP POLICY IF EXISTS "Allow public and authenticated insert on attendance" ON attendance;
+DROP POLICY IF EXISTS "Allow public and authenticated update on attendance" ON attendance;
+DROP POLICY IF EXISTS "Allow public and authenticated delete on attendance" ON attendance;
 
-CREATE POLICY "Allow public select on attendance" ON attendance FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on attendance" ON attendance FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on attendance" ON attendance FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete on attendance" ON attendance FOR DELETE USING (true);
+CREATE POLICY "Allow public and authenticated select on attendance" ON attendance FOR SELECT TO public USING (true);
+CREATE POLICY "Allow public and authenticated insert on attendance" ON attendance FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated update on attendance" ON attendance FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated delete on attendance" ON attendance FOR DELETE TO public USING (true);
 
 -- Policies for leave_requests table
-DROP POLICY IF EXISTS "Allow public select on leave_requests" ON leave_requests;
-DROP POLICY IF EXISTS "Allow public insert on leave_requests" ON leave_requests;
-DROP POLICY IF EXISTS "Allow public update on leave_requests" ON leave_requests;
-DROP POLICY IF EXISTS "Allow public delete on leave_requests" ON leave_requests;
+DROP POLICY IF EXISTS "Allow public and authenticated select on leave_requests" ON leave_requests;
+DROP POLICY IF EXISTS "Allow public and authenticated insert on leave_requests" ON leave_requests;
+DROP POLICY IF EXISTS "Allow public and authenticated update on leave_requests" ON leave_requests;
+DROP POLICY IF EXISTS "Allow public and authenticated delete on leave_requests" ON leave_requests;
 
-CREATE POLICY "Allow public select on leave_requests" ON leave_requests FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on leave_requests" ON leave_requests FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on leave_requests" ON leave_requests FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete on leave_requests" ON leave_requests FOR DELETE USING (true);
+CREATE POLICY "Allow public and authenticated select on leave_requests" ON leave_requests FOR SELECT TO public USING (true);
+CREATE POLICY "Allow public and authenticated insert on leave_requests" ON leave_requests FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated update on leave_requests" ON leave_requests FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public and authenticated delete on leave_requests" ON leave_requests FOR DELETE TO public USING (true);
 
--- 4. Seed Data INSERT statements for initial employees
+-- ==========================================
+-- 4. Seed Data INSERT statements
+-- ==========================================
 INSERT INTO employees (employee_id, name, email, phone, role, department, project, status, salary)
 VALUES 
   ('EMP-001', 'John Doe', 'john.doe@sandune.com', '+1-555-0101', 'Site Engineer', 'Engineering', 'Skyline Tower', 'Active', 85000),

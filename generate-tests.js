@@ -42,18 +42,12 @@ jest.mock('recharts', () => {
 
 describe('${componentName} Page', () => {
   it('renders without crashing', () => {
-    try {
-      const { container } = render(<Page />);
-      expect(container).toBeTruthy();
-    } catch(e) {
-      // ignore
-    }
+    const { container } = render(<Page />);
+    expect(container).toBeTruthy();
   });
 });
 `;
-  if (!fs.existsSync(testPath)) {
-    fs.writeFileSync(testPath, testContent);
-  }
+  fs.writeFileSync(testPath, testContent);
 }
 
 function traverse(currentDir, routePath) {

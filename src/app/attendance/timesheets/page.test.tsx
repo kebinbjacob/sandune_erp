@@ -32,11 +32,7 @@ jest.mock('recharts', () => {
 
 describe('Timesheets Page', () => {
   it('renders without crashing', () => {
-    try {
-      const { container } = render(<Page />);
-      expect(container).toBeTruthy();
-    } catch(e) {
-      // ignore
-    }
+    const { container } = render(<Page />);
+    expect(container).toBeTruthy();
   });
 });

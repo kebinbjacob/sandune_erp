@@ -1,0 +1,70 @@
+.applyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  padding: 0.65rem 1.4rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  white-space: nowrap;
+}
+.applyBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .summaryGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.summaryCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: border-color 0.2s;
+}
+.summaryCard:hover { border-color: rgba(255, 255, 255, 0.15); }
+
+.pendingCard  { border-color: rgba(251, 191, 36, 0.2); }
+.approvedCard { border-color: rgba(16, 185, 129, 0.2); }
+.rejectedCard { border-color: rgba(239, 68, 68, 0.2); }
+
+.summaryLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.summaryValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.loadingState,
+.errorState,
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+.errorState { color: #fca5a5; }

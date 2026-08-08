@@ -1,0 +1,76 @@
+.container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+.header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;
+}
+.title {
+  font-size: 1.75rem; font-weight: 700; margin: 0 0 0.2rem;
+  background: linear-gradient(135deg, #f8fafc, #94a3b8);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.subtitle { color: rgba(255,255,255,0.45); font-size: 0.875rem; margin: 0; }
+
+.periodPicker { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.select {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; color: #f8fafc; padding: 0.6rem 1rem;
+  font-size: 0.875rem; font-family: inherit; cursor: pointer;
+}
+.select option { background: #1e1e2e; }
+
+.runBtn {
+  background: linear-gradient(135deg, #10b981, #059669); border: none;
+  color: #fff; padding: 0.6rem 1.25rem; border-radius: 10px; cursor: pointer;
+  font-size: 0.875rem; font-weight: 600; white-space: nowrap; transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+.runBtn:hover { transform: translateY(-1px); }
+
+.totalsGrid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;
+}
+@media (max-width: 768px) { .totalsGrid { grid-template-columns: repeat(2, 1fr); } }
+
+.totalCard {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 1rem 1.25rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  border-left: 3px solid rgba(255,255,255,0.15);
+}
+.totalLabel { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; }
+.totalValue { font-size: 1.5rem; font-weight: 700; color: #f8fafc; }
+
+.tableCard { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.table thead tr { background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08); }
+.table th { padding: 0.8rem 0.85rem; text-align: left; font-size: 0.68rem; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s; }
+.table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.table tbody tr:last-child { border-bottom: none; }
+.table td { padding: 0.75rem 0.85rem; vertical-align: middle; }
+.savedRow { background: rgba(16,185,129,0.03) !important; }
+
+.empName { font-weight: 600; color: #f8fafc; font-size: 0.875rem; }
+.empRole { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.1rem; }
+.deptCell { color: rgba(255,255,255,0.45); font-size: 0.8rem; }
+.moneyCell { color: rgba(255,255,255,0.7); font-size: 0.875rem; font-family: monospace; }
+.deductionCell { color: #f87171; font-family: monospace; font-size: 0.875rem; }
+
+.attBadge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+
+.netSalary { font-weight: 700; color: #10b981; font-size: 0.9rem; font-family: monospace; display: block; }
+.miniBar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 0.3rem; width: 80px; overflow: hidden; }
+.miniBarFill { height: 100%; background: linear-gradient(90deg, #6366f1, #10b981); border-radius: 2px; }
+
+.statusBadge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+.saveBtn {
+  background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+  color: #a5b4fc; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer;
+  font-size: 0.78rem; font-weight: 600; transition: all 0.2s; white-space: nowrap; font-family: inherit;
+}
+.saveBtn:hover:not(:disabled) { background: rgba(99,102,241,0.22); }
+.saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.loadingState { text-align: center; padding: 3rem; color: rgba(255,255,255,0.35); }

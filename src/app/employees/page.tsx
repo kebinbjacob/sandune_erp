@@ -15,7 +15,7 @@ const defaultMockEmployees: Employee[] = [
 ];
 
 const columns = [
-  { header: "ID", accessor: "id" },
+  { header: "ID", accessor: "emp_code" },
   { header: "Name", accessor: "name" },
   { header: "Role", accessor: "role" },
   { header: "Project", accessor: "project" },
@@ -26,6 +26,15 @@ const columns = [
       <span className={`${styles.statusBadge} ${value === 'Active' ? styles.statusActive : styles.statusLeave}`}>
         {value}
       </span>
+    )
+  },
+  {
+    header: "Actions",
+    accessor: "uuid",
+    render: (uuid: string) => (
+      <Link href={`/employees/${uuid}`} style={{ color: '#a5b4fc', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}>
+        View Profile →
+      </Link>
     )
   },
 ];
@@ -69,11 +78,12 @@ export default function EmployeesPage() {
   });
 
   const tableData = filtered.map((emp) => ({
-    id: emp.employee_id || emp.id || "EMP-000",
+    uuid: emp.id || '',
+    emp_code: emp.employee_id || emp.id?.slice(0,8) || 'EMP-000',
     name: emp.name,
     role: emp.role,
-    project: emp.project || "Unassigned",
-    status: emp.status || "Active",
+    project: emp.project || 'Unassigned',
+    status: emp.status || 'Active',
   }));
 
   return (

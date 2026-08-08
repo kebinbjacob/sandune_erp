@@ -27,16 +27,27 @@ const navGroups = [
         name: "Attendance", 
         icon: "⏰",
         subItems: [
-          { name: "Daily Logs", href: "/attendance" },
+          { name: "Daily Attendance", href: "/attendance" },
           { name: "Timesheets", href: "/attendance/timesheets" },
+          { name: "Corrections", href: "/attendance/corrections" },
+          { name: "Reports", href: "/attendance/reports" },
         ]
       },
       { 
         name: "Leave", 
         icon: "🏖️",
         subItems: [
-          { name: "Requests", href: "/leave" },
+          { name: "Leave Requests", href: "/leave" },
+          { name: "Apply Leave", href: "/leave/apply" },
           { name: "Balances", href: "/leave/balances" },
+        ]
+      },
+      {
+        name: "Shifts & Schedules",
+        icon: "📅",
+        subItems: [
+          { name: "Shift Plans", href: "/shifts" },
+          { name: "Schedules", href: "/shifts/schedules" },
         ]
       },
     ]

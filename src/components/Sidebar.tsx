@@ -101,8 +101,8 @@ const navGroups = [
         icon: "⚙️",
         subItems: [
           { name: "Company Profile", href: "/settings" },
-          { name: "User Roles", href: "/settings/roles" },
-          { name: "Preferences", href: "/settings/preferences" },
+          { name: "User Roles", href: "/settings" },
+          { name: "Preferences", href: "/settings" },
         ]
       },
     ]

@@ -9,6 +9,7 @@ export interface AppUser {
   status: string;
   department?: string;
   password?: string;
+  avatar_url?: string;
   last_login?: string;
   created_at?: string;
   

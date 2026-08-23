@@ -12,6 +12,7 @@ export interface Employee {
   status: string;
   joining_date?: string;
   salary?: number;
+  avatar_url?: string;
   created_at?: string;
   updated_at?: string;
 }

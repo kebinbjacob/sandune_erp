@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getVendors, createVendor, Vendor } from '@/lib/services/crmService';
+import { getVendors, createVendor, updateVendor, Vendor } from '@/lib/services/crmService';
 import styles from '../expenses/expenses.module.css';
 
 export default function VendorsPage() {
@@ -9,8 +9,9 @@ export default function VendorsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
-  const [form, setForm] = useState({ name: '', category: '', contact_person: '', email: '', phone: '' });
+  const [form, setForm] = useState({ name: '', category: '', contact_person: '', email: '', phone: '', status: 'Active' });
 
   const load = async () => {
     setLoading(true);
@@ -19,15 +20,36 @@ export default function VendorsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openModal = (vendor?: Vendor) => {
+    if (vendor) {
+      setEditingId(vendor.id || null);
+      setForm({
+        name: vendor.name,
+        category: vendor.category,
+        contact_person: vendor.contact_person || '',
+        email: vendor.email || '',
+        phone: vendor.phone || '',
+        status: vendor.status || 'Active'
+      });
+    } else {
+      setEditingId(null);
+      setForm({ name: '', category: '', contact_person: '', email: '', phone: '', status: 'Active' });
+    }
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createVendor({ ...form, status: 'Active' });
+      if (editingId) {
+        await updateVendor(editingId, form);
+      } else {
+        await createVendor({ ...form, status: 'Active' });
+      }
       setShowModal(false);
-      setForm({ name: '', category: '', contact_person: '', email: '', phone: '' });
       await load();
-    } catch (err) { alert('Failed to create vendor'); }
+    } catch (err) { alert('Failed to save vendor'); }
     finally { setSaving(false); }
   };
 
@@ -38,14 +60,14 @@ export default function VendorsPage() {
           <h1 className={styles.title}>Vendors & Suppliers</h1>
           <p className={styles.subtitle}>Directory of material and equipment suppliers.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className={styles.newBtn}>+ Add Vendor</button>
+        <button onClick={() => openModal()} className={styles.newBtn}>+ Add Vendor</button>
       </header>
 
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading vendors...</div> : (
           <table className={styles.table}>
             <thead>
-              <tr><th>Vendor Name</th><th>Category</th><th>Primary Contact</th><th>Email</th><th>Phone</th></tr>
+              <tr><th>Vendor Name</th><th>Category</th><th>Primary Contact</th><th>Email</th><th>Phone</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {vendors.map(v => (
@@ -55,9 +77,10 @@ export default function VendorsPage() {
                   <td>{v.contact_person || '—'}</td>
                   <td className={styles.subCell}>{v.email || '—'}</td>
                   <td className={styles.subCell}>{v.phone || '—'}</td>
+                  <td><button className={styles.actionSelect} onClick={() => openModal(v)}>Edit</button></td>
                 </tr>
               ))}
-              {vendors.length === 0 && <tr><td colSpan={5} className={styles.loading}>No vendors found.</td></tr>}
+              {vendors.length === 0 && <tr><td colSpan={6} className={styles.loading}>No vendors found.</td></tr>}
             </tbody>
           </table>
         )}
@@ -67,7 +90,7 @@ export default function VendorsPage() {
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Add Vendor</h2>
+              <h2 className={styles.modalTitle}>{editingId ? 'Edit Vendor' : 'Add Vendor'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -88,8 +111,16 @@ export default function VendorsPage() {
                 <div className={styles.fg}><label className={styles.fl}>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} className={styles.fi} /></div>
               </div>
+              {editingId && (
+                <div className={styles.fg}><label className={styles.fl}>Status</label>
+                  <select value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))} className={styles.fi}>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              )}
               <div className={styles.modalFooter}>
-                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : 'Save Vendor'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Save Vendor')}</button>
               </div>
             </form>
           </div>

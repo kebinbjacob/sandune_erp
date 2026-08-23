@@ -1,38 +1,41 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import EmployeesPage from '../employees/page';
 import CreatePage from '../create/page';
-import { getEmployees, createEmployee } from '@/lib/services/employeeService';
 import fs from 'fs';
 import path from 'path';
 
 // Mock next/navigation
-const mockPush = jest.fn();
-const mockBack = jest.fn();
+const mockPush = vi.fn();
+const mockBack = vi.fn();
 let mockSearchParams = new URLSearchParams('?type=Add%20Employee');
 let mockPathname = '/create';
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
   useSearchParams: () => mockSearchParams,
   useRouter: () => ({
     push: mockPush,
     back: mockBack,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
   }),
 }));
 
-// Mock employeeService
-jest.mock('@/lib/services/employeeService', () => ({
-  getEmployees: jest.fn(),
-  createEmployee: jest.fn(),
-}));
+const mockGetEmployees = vi.fn();
+const mockCreateEmployee = vi.fn();
 
-const mockGetEmployees = getEmployees as jest.Mock;
-const mockCreateEmployee = createEmployee as jest.Mock;
+vi.mock('@/lib/services/employeeService', () => ({
+  getEmployees: (...args: any[]) => mockGetEmployees(...args),
+  createEmployee: (...args: any[]) => mockCreateEmployee(...args),
+}));
 
 describe('Empirical Adversarial Test Suite - Frontend & Services', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSearchParams = new URLSearchParams('?type=Add%20Employee');
     mockPathname = '/create';
   });
@@ -45,6 +48,7 @@ describe('Empirical Adversarial Test Suite - Frontend & Services', () => {
           employee_id: 'EMP-100',
           name: 'Alice Live',
           role: 'Lead Architect',
+          department: 'Solar Tower',
           project: 'Solar Tower',
           status: 'Active',
         },
@@ -53,6 +57,7 @@ describe('Empirical Adversarial Test Suite - Frontend & Services', () => {
           employee_id: 'EMP-101',
           name: 'Bob Live',
           role: 'Safety Inspector',
+          department: 'Metro Line',
           project: 'Metro Line',
           status: 'On Leave',
         },
@@ -65,14 +70,14 @@ describe('Empirical Adversarial Test Suite - Frontend & Services', () => {
       });
 
       expect(mockGetEmployees).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Alice Live')).toBeInTheDocument();
-      expect(screen.getByText('Lead Architect')).toBeInTheDocument();
-      expect(screen.getByText('Solar Tower')).toBeInTheDocument();
-      expect(screen.getByText('Bob Live')).toBeInTheDocument();
+      expect(await screen.findByText('Alice Live')).toBeInTheDocument();
+      expect(await screen.findByText('Lead Architect')).toBeInTheDocument();
+      expect(await screen.findByText('Solar Tower')).toBeInTheDocument();
+      expect(await screen.findByText('Bob Live')).toBeInTheDocument();
     });
 
     it('handles getEmployees failure gracefully without crashing', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockGetEmployees.mockRejectedValueOnce(new Error('Supabase network error'));
 
       await act(async () => {
@@ -208,7 +213,7 @@ describe('Empirical Adversarial Test Suite - Frontend & Services', () => {
     });
 
     it('displays error message when createEmployee service fails', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockCreateEmployee.mockRejectedValueOnce(new Error('Database RLS Policy Violation'));
 
       render(<CreatePage />);

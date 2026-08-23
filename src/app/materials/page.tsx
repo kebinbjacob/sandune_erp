@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMaterials, createMaterial, Material } from '@/lib/services/resourceService';
+import { getMaterials, createMaterial, updateMaterial, Material } from '@/lib/services/resourceService';
 import styles from '../expenses/expenses.module.css';
 
 export default function MaterialsPage() {
@@ -9,8 +9,9 @@ export default function MaterialsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
-  const [form, setForm] = useState({ item_name: '', category: '', current_stock: 0, unit: '', reorder_level: 0, location: '' });
+  const [form, setForm] = useState({ item_name: '', category: '', current_stock: 0, unit: '', reorder_level: 0, location: '', status: '' });
 
   const load = async () => {
     setLoading(true);
@@ -19,15 +20,38 @@ export default function MaterialsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openModal = (material?: Material) => {
+    if (material) {
+      setEditingId(material.id || null);
+      setForm({
+        item_name: material.item_name,
+        category: material.category,
+        current_stock: material.current_stock,
+        unit: material.unit,
+        reorder_level: material.reorder_level,
+        location: material.location || '',
+        status: material.status
+      });
+    } else {
+      setEditingId(null);
+      setForm({ item_name: '', category: '', current_stock: 0, unit: '', reorder_level: 0, location: '', status: '' });
+    }
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createMaterial({ ...form, status: form.current_stock <= form.reorder_level ? 'Low Stock' : 'Healthy' });
+      const computedStatus = form.current_stock <= form.reorder_level ? 'Low Stock' : 'Healthy';
+      if (editingId) {
+        await updateMaterial(editingId, { ...form, status: computedStatus });
+      } else {
+        await createMaterial({ ...form, status: computedStatus });
+      }
       setShowModal(false);
-      setForm({ item_name: '', category: '', current_stock: 0, unit: '', reorder_level: 0, location: '' });
       await load();
-    } catch (err) { alert('Failed to create material'); }
+    } catch (err) { alert('Failed to save material'); }
     finally { setSaving(false); }
   };
 
@@ -38,14 +62,14 @@ export default function MaterialsPage() {
           <h1 className={styles.title}>Materials & Inventory</h1>
           <p className={styles.subtitle}>Track raw materials, stock levels, and locations.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className={styles.newBtn}>+ Add Material</button>
+        <button onClick={() => openModal()} className={styles.newBtn}>+ Add Material</button>
       </header>
 
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading inventory...</div> : (
           <table className={styles.table}>
             <thead>
-              <tr><th>Item Name</th><th>Category</th><th>Stock Level</th><th>Reorder Level</th><th>Location</th><th>Status</th></tr>
+              <tr><th>Item Name</th><th>Category</th><th>Stock Level</th><th>Reorder Level</th><th>Location</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {materials.map(m => {
@@ -62,10 +86,11 @@ export default function MaterialsPage() {
                         {isLow ? 'Low Stock' : 'Healthy'}
                       </span>
                     </td>
+                    <td><button className={styles.actionSelect} onClick={() => openModal(m)}>Edit</button></td>
                   </tr>
                 );
               })}
-              {materials.length === 0 && <tr><td colSpan={6} className={styles.loading}>No materials in inventory.</td></tr>}
+              {materials.length === 0 && <tr><td colSpan={7} className={styles.loading}>No materials in inventory.</td></tr>}
             </tbody>
           </table>
         )}
@@ -75,7 +100,7 @@ export default function MaterialsPage() {
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Add Material</h2>
+              <h2 className={styles.modalTitle}>{editingId ? 'Edit Material' : 'Add Material'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -91,7 +116,7 @@ export default function MaterialsPage() {
               <div className={styles.fg}><label className={styles.fl}>Storage Location</label><input value={form.location} onChange={e => setForm(f => ({...f, location: e.target.value}))} className={styles.fi} /></div>
               
               <div className={styles.modalFooter}>
-                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : 'Save Material'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Save Material')}</button>
               </div>
             </form>
           </div>

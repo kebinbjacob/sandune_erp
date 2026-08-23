@@ -51,11 +51,11 @@ function CreateForm() {
           employee_id: empId,
           name: formData.name,
           role: formData.role,
-          department: formData.department || null,
-          project: formData.project || null,
-          // Send null for empty optional UNIQUE fields to avoid constraint violations
-          email: formData.email.trim() || null,
-          phone: formData.phone.trim() || null,
+          department: formData.department || undefined,
+          project: formData.project || undefined,
+          // Send undefined for empty optional UNIQUE fields to avoid constraint violations
+          email: formData.email.trim() || undefined,
+          phone: formData.phone.trim() || undefined,
           status: formData.status,
         });
         router.push('/employees');

@@ -48,3 +48,13 @@ export async function assignShift(assignment: Partial<EmployeeShift>): Promise<E
   if (error) throw error;
   return data;
 }
+
+export async function updateShift(id: string, updates: Partial<Shift>): Promise<void> {
+  const { error } = await supabase.from('shifts').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateEmployeeShift(id: string, updates: Partial<EmployeeShift>): Promise<void> {
+  const { error } = await supabase.from('employee_shifts').update(updates).eq('id', id);
+  if (error) throw error;
+}

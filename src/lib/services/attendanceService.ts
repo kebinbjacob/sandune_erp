@@ -145,7 +145,7 @@ export async function bulkMarkAttendance(
       .eq('date', date)
       .single();
 
-    await markAttendance(empId, date, status, 'Bulk mark', '', existing ?? undefined);
+    await markAttendance(empId, date, status, 'Bulk mark', '', (existing as unknown as AttendanceRecord) ?? undefined);
   }
 }
 

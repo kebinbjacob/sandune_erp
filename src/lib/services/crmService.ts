@@ -69,3 +69,18 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
   if (error) throw error;
   return data;
 }
+
+export async function updateClient(id: string, updates: Partial<Client>): Promise<void> {
+  const { error } = await supabase.from('clients').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateContractor(id: string, updates: Partial<Contractor>): Promise<void> {
+  const { error } = await supabase.from('contractors').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateVendor(id: string, updates: Partial<Vendor>): Promise<void> {
+  const { error } = await supabase.from('vendors').update(updates).eq('id', id);
+  if (error) throw error;
+}

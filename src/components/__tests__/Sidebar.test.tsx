@@ -1,8 +1,26 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
 import { Sidebar } from '../Sidebar';
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock('@/lib/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: '1', email: 'test@sandune.com', name: 'Test User', role: 'Admin' },
+    logout: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe('Sidebar Component', () => {

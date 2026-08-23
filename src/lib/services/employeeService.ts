@@ -43,3 +43,28 @@ export async function createEmployee(employeeData: Partial<Employee>): Promise<E
   }
   return data;
 }
+
+export async function updateEmployee(id: string, updates: Partial<Employee>): Promise<void> {
+  const { error } = await supabase.from('employees').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function getEmployeeById(id: string): Promise<Employee | null> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteEmployee(id: string): Promise<void> {
+  const { error } = await supabase.from('employees').delete().eq('id', id);
+  if (error) throw error;
+}
+

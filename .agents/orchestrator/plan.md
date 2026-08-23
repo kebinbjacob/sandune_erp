@@ -1,31 +1,28 @@
-# Execution Plan — Sandune Core HR & Supabase Integration
+# Execution Plan — Sandune Vitest & Database Integration Testing Suite
 
 ## Overview
-This plan governs the end-to-end implementation of Supabase Database Schema & RBAC for Core HR (Employees, Attendance, Leave), Next.js frontend integration, Vanilla CSS design system preservation, and test verification for the Sandune project.
+This plan governs the setup of Vitest + React Testing Library (RTL) for parallel execution in Next.js, local database (Supabase/PostgreSQL/SQLite) integration for true backend CRUD testing, and implementation of UI component and backend service test suites with zero failures.
 
 ## Milestones
 
 ### Milestone 1: Exploration & Codebase Analysis
-- Explore existing codebase structure (Next.js app, package.json, dependencies, mock data, components, styles, tests).
-- Audit current `/employees` page implementation and form components.
-- Check Supabase connectivity using environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+- Explore codebase structure: package.json dependencies, Next.js config, tsconfig.json path aliases (`@/*`).
+- Inspect existing services (`authService`, `userService`, `employeeService`, etc.) and UI components (`Login` page, login forms, employee forms, etc.).
+- Inspect local DB setup, Supabase environment, Docker/Local Postgres availability, or SQLite/embedded DB fallback capabilities.
 
-### Milestone 2: Supabase Schema & RBAC Implementation
-- Create robust SQL schema for Core HR:
-  - `employees` table (id, first_name, last_name, email, phone, role, department, status, joining_date, etc.)
-  - `attendance` table (id, employee_id, date, status, check_in, check_out, etc.)
-  - `leave_requests` table (id, employee_id, leave_type, start_date, end_date, status, reason, etc.)
-- Enable Row Level Security (RLS) and define policies for public/authenticated/role-based access.
-- Generate migration/seed SQL script (`supabase/schema.sql` or `supabase/migrations/`) and apply to Supabase instance.
+### Milestone 2: Test Framework & Local DB Infrastructure Setup
+- Install/configure `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`/`happy-dom`, `@vitejs/plugin-react` if needed.
+- Create/configure `vitest.config.ts` with parallel worker execution, React JSX support, path alias resolution (`@/` -> `./src/` or `./`), and setup files.
+- Set up local test database harness (e.g. Supabase local CLI, local Postgres, or local DB instance) for backend service integration testing.
+- Add test script commands to `package.json` (`npm run test:vitest`, `npx vitest run`).
 
-### Milestone 3: Frontend Integration & Supabase Services
-- Add `@supabase/supabase-js` or existing Supabase client helper if needed.
-- Connect Next.js application to Supabase via `@supabase/supabase-js` using standard env vars.
-- Implement data access services for fetching employees, creating employee records, updating employee data, and managing attendance/leave.
-- Wire `/employees` page to fetch and render live data from Supabase.
-- Wire "Add Employee" form to validate and insert records into Supabase `employees` table.
+### Milestone 3: Test Implementation (UI & Backend Service CRUD)
+- Write UI component unit & interaction tests (e.g. Login form rendering, user input, submit behavior).
+- Write backend service integration tests performing real CRUD operations against the local database (`authService`, `userService`, `employeeService`).
+- Ensure parallel execution across test files and 100% pass rate.
 
-### Milestone 4: Verification, Test Suite & UI/UX Audit
-- Verify glassmorphic Vanilla CSS styling remains intact.
-- Run Jest test suite (`npm test`) and update tests/components as needed to pass cleanly.
-- Perform adversarial verification and forensic integrity audit.
+### Milestone 4: Verification, Adversarial Testing & Forensic Audit
+- Verify test assertions are non-trivial and truly validate functionality.
+- Perform adversarial tests to ensure failures occur when breaking changes are introduced.
+- Run Forensic Integrity Audit to guarantee zero hardcoded/mocked facade tricks or swallowed errors.
+

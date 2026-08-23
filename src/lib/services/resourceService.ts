@@ -80,3 +80,18 @@ export async function createPurchaseOrder(po: Partial<PurchaseOrder>): Promise<P
   if (error) throw error;
   return data;
 }
+
+export async function updateMaterial(id: string, updates: Partial<Material>): Promise<void> {
+  const { error } = await supabase.from('materials').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateEquipment(id: string, updates: Partial<Equipment>): Promise<void> {
+  const { error } = await supabase.from('equipment').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<void> {
+  const { error } = await supabase.from('purchase_orders').update(updates).eq('id', id);
+  if (error) throw error;
+}

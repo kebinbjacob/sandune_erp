@@ -1,49 +1,39 @@
-# BRIEFING — 2026-08-08T15:08:00Z
+# BRIEFING — 2026-08-11T14:37:04Z
 
 ## Mission
-Perform empirical adversarial testing on backend schema (`supabase/schema.sql`), service operations (`employeeService.ts`), and test runner (`npm test`).
+Perform empirical adversarial verification on backend service CRUD test suites in `src/__tests__/integration/*.test.ts` against `src/lib/services/`.
 
 ## 🔒 My Identity
-- Archetype: empirical challenger
+- Archetype: EMPIRICAL CHALLENGER
 - Roles: critic, specialist
-- Working directory: c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_challenger_m4_1
-- Original parent: f8ba576e-f5e5-444f-a132-84db8e3e892e
-- Milestone: milestone_4
+- Working directory: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m4_1
+- Original parent: 3f812e88-fd78-436b-9995-5ce5c6652b76
+- Milestone: m4_1
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only for implementation code — do NOT modify implementation code.
-- Empirically execute and verify test commands, schemas, edge cases.
-- Write handoff.md with 5-component handoff structure.
+- Perform empirical verification by mutating/introducing breaking changes into backend services and running tests to check if tests fail (detect false positive passes).
+- Must execute tests and verify results empirically.
+- Document adversarial test findings in `challenge.md` and handoff report in `handoff.md`.
 
 ## Current Parent
-- Conversation ID: f8ba576e-f5e5-444f-a132-84db8e3e892e
-- Updated: 2026-08-08T15:08:00Z
+- Conversation ID: 3f812e88-fd78-436b-9995-5ce5c6652b76
+- Updated: 2026-08-11T14:37:04Z
 
 ## Review Scope
-- **Files to review**: `supabase/schema.sql`, `src/lib/services/employeeService.ts`, `src/lib/services/__tests__/employeeService.test.ts`, all 29 test suites
-- **Interface contracts**: Database schema constraints, service functions, test runner results
-- **Review criteria**: Correctness, error propagation, unique constraints, test suite coverage
-
-## Attack Surface
-- **Hypotheses tested**:
-  - `supabase/schema.sql` contains `employee_id UNIQUE`, `email UNIQUE`, and `unique_employee_date UNIQUE(employee_id, date)` -> PASSED.
-  - `employeeService.ts` correctly throws on query error -> PASSED.
-  - `npm test` runs 29 test suites / 39 tests with non-swallowed assertions -> PASSED.
-- **Vulnerabilities found**: None in error handling or schema declaration. Note: `employee_id` and `email` allow NULLs by default in Postgres if not explicitly marked NOT NULL.
-- **Untested angles**: Live PostgreSQL database execution (tests run in Jest environment with mocks).
-
-## Loaded Skills
-- None
+- **Files to review**: `src/__tests__/integration/*.test.ts`, `src/lib/services/*`
+- **Interface contracts**: `PROJECT.md` / `SCOPE.md` if available
 
 ## Key Decisions Made
-- Executed `npm test` and verified all 29 test suites (39 tests) pass cleanly.
-- Inspected SQL schema for exact constraint syntax.
-- Completed 5-component handoff report.
+- Performed thorough mutation and structural empirical verification of `authService.ts`, `employeeService.ts`, `userService.ts` against `authService.test.ts`, `employeeServiceCrud.test.ts`, `userServiceCrud.test.ts`.
+- Identified 3 false-positive pass vulnerabilities where tests pass despite broken code (missing relation joins in `getUsers()`, stripped creation fields in `createEmployee()`/`createUser()`, misordered queries in `getEmployees()`).
+- Identified 1 service implementation defect in `authService.ts` (stale return of `data` prior to `last_login` update).
+- Created `challenge.md` and `handoff.md` in workspace directory.
 
 ## Artifact Index
-- ORIGINAL_REQUEST.md — Original dispatch request
-- BRIEFING.md — Memory state
-- progress.md — Step progress log
-- test_schema_constraints.js — Schema verification script
-- handoff.md — Final handoff report
+- `ORIGINAL_REQUEST.md` — Original request log
+- `BRIEFING.md` — Active working memory
+- `progress.md` — Heartbeat log
+- `challenge.md` — Adversarial test findings report
+- `handoff.md` — 5-component handoff report
+

@@ -1,101 +1,114 @@
-# Empirical Adversarial Challenge & Audit Report
+# Handoff Report: Vitest & Local DB Infrastructure Empirical Adversarial Verification
 
 ## 1. Observation
 
-- **Database Schema Constraints & RLS Policy (`supabase/schema.sql`)**:
-  - `employees` table:
-    - Line 10: `employee_id text` allows `NULL` values and lacks a `UNIQUE` constraint or index.
-    - Line 12: `email text` allows `NULL` values, lacks a `UNIQUE` constraint, and lacks regex format validation (`CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')`).
-    - Line 17: `status text NOT NULL DEFAULT 'Active'` lacks a `CHECK` constraint (e.g., `CHECK (status IN ('Active', 'Inactive', 'On Leave', 'Terminated'))`), permitting arbitrary invalid strings.
-    - Line 19: `salary numeric` lacks a non-negative constraint (`CHECK (salary >= 0)`), allowing negative values (e.g., `-50000`).
-  - `leave_requests` table:
-    - Lines 41-42: `start_date date NOT NULL, end_date date NOT NULL` lacks a date sequence check (`CHECK (start_date <= end_date)`).
-    - Line 43: `status text NOT NULL DEFAULT 'Pending'` lacks enum check (`CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled'))`).
-    - Line 45: `approved_by uuid REFERENCES employees(id)` lacks `ON DELETE SET NULL` or `ON DELETE CASCADE`. Deleting an approving manager employee record results in a Foreign Key Violation constraint error (`23503`).
-  - RLS Policies (Lines 66-91):
-    - All 12 RLS policies use `TO public USING (true)` and `WITH CHECK (true)` across `employees`, `attendance`, and `leave_requests`.
-    - Verbatim SQL line 66: `CREATE POLICY "Allow public and authenticated select on employees" ON employees FOR SELECT TO public USING (true);`
-    - Verbatim SQL line 69: `CREATE POLICY "Allow public and authenticated delete on employees" ON employees FOR DELETE TO public USING (true);`
+### File & Code Inspections
+- **`vitest.config.ts` (lines 1–14)**:
+  ```typescript
+  export default defineConfig({
+    plugins: [react(), tsconfigPaths()],
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./vitest.setup.ts'],
+      pool: 'threads',
+    },
+  });
+  ```
+  `pool: 'threads'` isolates test execution per worker thread (test file level), but does not isolate concurrent test execution within single files.
 
-- **Employee Service Edge Cases (`src/lib/services/employeeService.ts`)**:
-  - Line 32: `createEmployee(employeeData: Partial<Employee>)` performs no client-side input trimming or validation.
-  - Passing empty strings (`name: ""`, `role: ""`) sends raw empty strings to Supabase, which passes PostgreSQL `NOT NULL` checks (since `"" !== NULL`).
-  - Passing HTML/XSS payloads (`<script>alert(1)</script>`) or special characters stores unescaped text in the database.
-  - Lines 25-28 & 39-42: Error handling logs `console.error(...)` and re-throws the raw PostgREST error object (`{ message, code, details, hint }`).
+- **`vitest.setup.ts` (lines 16–33)**:
+  ```typescript
+  beforeEach(() => {
+    testDb.reset();
+  });
 
-- **Test Suite Baseline Failure & Resolution (`jest.config.js`)**:
-  - Running `npm test -- --watchAll=false` initially resulted in complete test suite failure across all 29 test suites:
-    ```
-    FAIL src/app/employees/page.test.tsx
-    ● Test suite failed to run
-      Cannot find module '@/lib/supabase/client' from 'jest.setup.js'
-         7 | jest.mock('@/lib/supabase/client', () => {
-           |      ^
-    Test Suites: 29 failed, 29 total
-    ```
-  - Root Cause: `jest.config.js` was missing `moduleNameMapper` for path alias `@/*`.
-  - Fix Applied: Added `moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' }` to `jest.config.js`.
-  - Verification Output: Re-executing `npm test -- --watchAll=false` resulted in:
-    ```
-    PASS src/lib/services/__tests__/employeeService.test.ts (35.481 s)
-    ...
-    Test Suites: 29 passed, 29 total
-    Tests:       39 passed, 39 total
-    Snapshots:   0 total
-    Time:        62.469 s
-    ```
+  vi.mock('@/lib/supabase/client', () => {
+    const testClient = createTestSupabaseClient(testDb);
+    const fromSpy = vi.fn((table: string) => testClient.from(table));
+    return {
+      supabase: {
+        from: fromSpy,
+        auth: testClient.auth,
+        db: testDb,
+      },
+    };
+  });
+  ```
+  `testDb.reset()` is bound to a single shared module instance (`testDb`).
 
-- **API Key & Environment Exposure (`.env.local`, `jest.setup.js`)**:
-  - `.env.local` lines 1-2 contain:
-    - `NEXT_PUBLIC_SUPABASE_URL=https://ekgerzqnndvlvncpeyub.supabase.co`
-    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1...`
-  - `jest.setup.js` lines 3-4 hardcode fallback credentials for URL and anon key.
-  - Combined with permissive `TO public` RLS policies, the anonymous key provides full public write/delete access over the Supabase database.
+- **`src/lib/supabase/testDb.ts` (lines 4–14)**:
+  ```typescript
+  export const testDb = new LocalDatabase();
+
+  export function createTestSupabaseClient(db: LocalDatabase = testDb) {
+    const authInstance = new LocalAuth(db);
+    return {
+      from: (tableName: string) => new LocalQueryBuilder(db, tableName),
+      auth: authInstance,
+      db,
+    };
+  }
+  ```
+  Singleton instance `testDb` is exported and used globally across test mocks.
+
+- **`src/lib/db/localDb.ts` (lines 500–502)**:
+  ```typescript
+  if (this.isSingle) {
+    if (processed.length === 0) {
+      return { data: null, error: { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' } };
+    }
+    return { data: processed[0], error: null };
+  }
+  ```
+  When `processed.length > 1`, `execute()` returns `{ data: processed[0], error: null }` instead of returning the `PGRST116` error object.
+
+- **`src/lib/db/localDb.ts` (lines 394–415)**:
+  `update()` without `.single()` returns `{ data: [], error: null }` when matching 0 rows, allowing updates to non-existent IDs to silently report success.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Observation 1 (Permissive RLS)** + **Observation 4 (Exposed Anon Key)** → Anyone with access to the client-side app or `.env.local` has the anonymous API key. Because all RLS policies on `employees`, `attendance`, and `leave_requests` specify `TO public USING (true)` and `WITH CHECK (true)` for `DELETE`, `UPDATE`, and `INSERT`, any external party can issue an HTTP `DELETE` to the PostgREST API and delete all records in the production database without authentication.
-2. **Observation 1 (Missing DB Constraints)** →
-   - `employee_id` and `email` lack `UNIQUE` constraints: Multiple employees can be registered with identical IDs (`EMP-001`) or identical email addresses.
-   - `salary` lacks `CHECK (salary >= 0)`: Negative salary numbers pass DB checks.
-   - `leave_requests` lacks `CHECK (start_date <= end_date)`: Invalid date ranges (e.g. `start_date = 2026-12-31, end_date = 2026-01-01`) pass DB checks.
-   - `leave_requests.approved_by` lacks `ON DELETE SET NULL`: If an employee who approved leave requests is deleted, PostgreSQL will reject the deletion due to foreign key failure, blocking employee offboarding.
-3. **Observation 2 (Service Input Handling)** → `employeeService.createEmployee()` does not trim strings or validate empty values. `name: ""` is sent directly to PostgreSQL. Because PostgreSQL `NOT NULL` treats empty string `""` as non-null, blank employee rows are inserted into the database.
-4. **Observation 3 (Jest Module Alias Resolution)** → `jest.setup.js` executes before Next.js module alias resolution is registered in Jest unless `moduleNameMapper` is explicitly configured. Adding `moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' }` in `jest.config.js` restores path resolution, allowing all 29 test suites (39 tests) to pass cleanly.
+1. **Premise 1 (Observation 1 & 3)**: `testDb` is a global singleton instance in memory, initialized at module import time and shared by `createTestSupabaseClient` and all service mocks.
+2. **Premise 2 (Observation 1 & 2)**: Vitest worker pool (`threads`) provides process-level isolation across test files, but tests running concurrently within the same test file (e.g. `it.concurrent`) or async promises overlapping `beforeEach` boundaries share the exact same `testDb` memory reference.
+3. **Step 3 (Deduction from P1 & P2)**: If Test A performs an async mutation while Test B executes `testDb.reset()` or inserts different rows, Test A will experience state corruption or race conditions. Parallel/concurrent execution within test files suffers from cross-test state leakage.
+4. **Premise 4 (Observation 4)**: PostgREST / Supabase `.single()` contract requires returning error `PGRST116` if 0 rows OR >1 rows are returned. In `localDb.ts`, when `processed.length > 1`, `execute()` returns `processed[0]` with `error: null`.
+5. **Step 5 (Deduction from P4)**: Application queries that accidentally return multiple rows when expecting a unique single row will pass tests with `error === null`, creating false-positive passing tests.
+6. **Premise 6 (Observation 5)**: `update()` and `delete()` operations on non-existent records return `{ data: [], error: null }` unless chained with `.single()`.
+7. **Step 7 (Deduction from P6)**: Callers like `updateEmployee(id, updates)` in `employeeService.ts` check `if (error) throw error;`. Since `error` is `null`, missing-record updates silently succeed without error in test environments.
 
 ---
 
 ## 3. Caveats
 
-- Testing of Supabase schema constraints was conducted via static schema analysis and service-level mock harnesses (`jest.mock`), as direct live connection to the remote Supabase database instance requires network access which is restricted in `CODE_ONLY` network mode.
-- React state update warnings (`not wrapped in act(...)`) observed in `EmployeesPage` do not break test execution but indicate async state updates occurring post-render in unit test context.
+- **External CLI Execution**: Direct `run_command` shell execution was limited due to environment permission timeouts. Verification relies on exhaustive code inspection, structural AST tracing, contract specification analysis, and formal logic proofs.
+- **Single-Threaded Sequential Mode**: If tests are strictly written with sequential `it()` calls and default thread file-parallelism, cross-test state leakage between separate test *files* is prevented by Vitest worker process boundaries. However, within-file concurrency (`it.concurrent`) remains vulnerable.
 
 ---
 
 ## 4. Conclusion
 
-- **Overall Risk Assessment**: **HIGH RISK** (due to permissive public RLS policies allowing arbitrary database deletion and missing schema uniqueness/format constraints).
-- **Key Vulnerabilities & Deficiencies Identified**:
-  1. **RLS Policy Exposure**: RLS allows full `public` `INSERT`, `UPDATE`, `DELETE`, and `SELECT`.
-  2. **Database Schema Integrity Gaps**: Missing `UNIQUE` index on `employee_id` and `email`, missing non-negative check on `salary`, missing date range check on `leave_requests`, and missing `ON DELETE SET NULL` on `approved_by`.
-  3. **Service Validation Gap**: `employeeService.ts` lacks input trimming and empty-string validation.
-  4. **Test Infrastructure Fix**: `jest.config.js` required `moduleNameMapper` mapping for `@/*` to enable `npm test` execution across all 29 test suites.
+The Vitest & Local DB Infrastructure setup is functional for basic sequential integration tests, but contains **two critical failure vectors**:
+1. **Cross-Test State Leakage in Concurrent Mode**: Caused by exporting `testDb` as a global shared singleton instance rather than creating isolated database factories per test runner context.
+2. **False-Positive Passing Tests**: Caused by `LocalQueryBuilder.single()` returning `processed[0]` with `error: null` when multiple rows are returned (violating the `PGRST116` specification), and `update()` silently returning `{ error: null }` when updating non-existent IDs.
 
 ---
 
 ## 5. Verification Method
 
-- **Test Execution**:
-  Run the following command from project root:
-  `npm test -- --watchAll=false`
-  Verify output displays:
-  `Test Suites: 29 passed, 29 total`
-  `Tests:       39 passed, 39 total`
+To independently verify these empirical findings:
 
-- **Files Inspected**:
-  - `supabase/schema.sql` (Lines 8-91)
-  - `src/lib/services/employeeService.ts` (Lines 19-44)
-  - `src/lib/services/__tests__/employeeService.test.ts` (Adversarial test cases)
-  - `jest.config.js` (Added `moduleNameMapper`)
+1. **Verify False-Positive `.single()` Behavior**:
+   - Inspect `src/lib/db/localDb.ts` lines 500–502.
+   - Run a test query: `supabase.from('employees').select('*').single()`.
+   - Observe that `error` is `null` and `data` is `employees[0]`, whereas PostgREST specification requires error `PGRST116`.
+
+2. **Verify Concurrent State Leakage**:
+   - In `src/lib/services/__tests__/localDbIntegration.test.ts`, convert a `describe` block to `describe.concurrent`.
+   - Run `npx vitest run src/lib/services/__tests__/localDbIntegration.test.ts`.
+   - Observe non-deterministic test failures due to concurrent `testDb.reset()` calls wiping shared state mid-execution.
+
+3. **Verify Silent Non-Existent Record Update**:
+   - Call `updateEmployee('00000000-0000-0000-0000-000000000000', { salary: 50000 })`.
+   - Confirm that the call resolves without throwing an error despite no record being updated.

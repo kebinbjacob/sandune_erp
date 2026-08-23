@@ -1,92 +1,97 @@
-# Handoff Report: Empirical Adversarial Testing of Backend Schema, Service Operations & Test Runner
+# Handoff Report: Empirical Adversarial Verification (Backend Service CRUD)
 
-**Agent**: `challenger_m4_1`  
-**Milestone**: Milestone 4  
-**Date**: 2026-08-08  
+**Author**: EMPIRICAL CHALLENGER (`teamwork_preview_challenger_m4_1`)  
+**Date**: 2026-08-11  
+**Milestone**: `m4_1`  
 
 ---
 
 ## 1. Observation
 
-### Database Schema UNIQUE Constraints (`supabase/schema.sql`)
-Direct inspection of `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/supabase/schema.sql` revealed:
-- **`employees` table (Lines 8–22)**:
-  - Line 10: `employee_id text UNIQUE` — Inline column-level UNIQUE constraint enforcing uniqueness of non-null employee identifiers.
-  - Line 12: `email text UNIQUE` — Inline column-level UNIQUE constraint enforcing email uniqueness.
-- **`attendance` table (Lines 24–35)**:
-  - Line 34: `CONSTRAINT unique_employee_date UNIQUE(employee_id, date)` — Composite table-level UNIQUE constraint enforcing that an employee (`employee_id` UUID) can have at most one attendance record per calendar date (`date`).
-- **Seed Data Idempotency (Line 103)**:
-  - `ON CONFLICT DO NOTHING;` ensures safe execution against unique constraint violations during initialization.
+Direct code inspection, structural analysis, and empirical mutation testing were performed on integration test files and backend service implementations:
 
-### `employeeService.ts` Operations & Error Handling (`src/lib/services/employeeService.ts`)
-Direct inspection of `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/src/lib/services/employeeService.ts`:
-- **`getEmployees()` (Lines 19–30)**:
+- **Target Files Inspected**:
+  - `src/__tests__/integration/authService.test.ts` (134 lines)
+  - `src/__tests__/integration/employeeServiceCrud.test.ts` (148 lines)
+  - `src/__tests__/integration/userServiceCrud.test.ts` (137 lines)
+  - `src/lib/services/authService.ts` (32 lines)
+  - `src/lib/services/employeeService.ts` (71 lines)
+  - `src/lib/services/userService.ts` (96 lines)
+  - `src/lib/db/localDb.ts` (576 lines)
+
+- **Observation O1 (Weak List Length Assertion in `userServiceCrud.test.ts`)**:
+  In `userServiceCrud.test.ts` (lines 39-40):
   ```typescript
-  const { data, error } = await supabase.from('employees').select('*').order('created_at', { ascending: true });
-  if (error) {
-    console.error('Error fetching employees from Supabase:', error);
-    throw error;
-  }
-  return data || [];
+  const allUsers = await getUsers();
+  expect(allUsers.length).toBe(3); // 2 pre-seeded + 1 newly created
   ```
-- **`createEmployee()` (Lines 32–44)**:
+  And lines 64-65:
   ```typescript
-  const { data, error } = await supabase.from('employees').insert([employeeData]).select().single();
-  if (error) {
-    console.error('Error creating employee in Supabase:', error);
-    throw error;
-  }
-  return data;
+  const finalUsers = await getUsers();
+  expect(finalUsers.length).toBe(2);
   ```
+  No assertions exist checking `allUsers[i].employees` or any relational data fields on the returned `AppUser[]` list.
 
-### Test Suite & Runner Verification (`npm test`)
-Execution of `npm test` produced the following verbatim Jest output:
-```text
-Test Suites: 29 passed, 29 total
-Tests:       39 passed, 39 total
-Snapshots:   0 total
-Time:        61.306 s
-Ran all test suites.
-```
+- **Observation O2 (Incomplete Creation Field Assertions in `employeeServiceCrud.test.ts`)**:
+  In `employeeServiceCrud.test.ts` (lines 19-38):
+  `newEmpInput` contains `employee_id`, `name`, `email`, `phone`, `role`, `department`, `project`, `status`, `joining_date`, `salary`.
+  Assertions on `createdEmp` (lines 33-38):
+  ```typescript
+  expect(createdEmp).toBeDefined();
+  expect(createdEmp.id).toBeDefined();
+  expect(createdEmp.name).toBe('Robert Vance');
+  expect(createdEmp.employee_id).toBe('EMP-010');
+  expect(createdEmp.salary).toBe(120000);
+  expect(createdEmp.created_at).toBeDefined();
+  ```
+  `joining_date`, `email`, `phone`, `department`, `project`, and `status` are omitted from creation assertions.
 
-Breakdown of the 29 test suites (39 tests):
-- `src/lib/services/__tests__/employeeService.test.ts`: 2 suites, 7 tests (verifying successful fetch/create, empty fields, XSS/SQL injection string handling, missing optional fields, and exception re-throwing on Supabase errors).
-- `src/components/__tests__/`: 3 test suites, 7 tests (`Card.test.tsx` [2], `Sidebar.test.tsx` [2], `Table.test.tsx` [3]).
-- `src/app/`: 25 page test suites, 25 tests (verifying error-free rendering of pages across Next.js app directory).
+- **Observation O3 (Lack of Ordering Contract Assertion in `employeeServiceCrud.test.ts`)**:
+  In `employeeService.ts` (line 23), `getEmployees()` specifies `.order('created_at', { ascending: true })`.
+  In `employeeServiceCrud.test.ts` (lines 43-44 and 71-72), `getEmployees()` is only verified with `expect(employeesList).toHaveLength(5)` and `expect(finalEmployees).toHaveLength(4)`. Item sequence and ordering are unasserted.
+
+- **Observation O4 (Stale Data Return in `authService.ts`)**:
+  In `authService.ts` (lines 4-30):
+  ```typescript
+  export async function loginWithEmail(email: string, password?: string): Promise<AppUser> {
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('*, employees(*)')
+      .eq('email', email)
+      .single(); // Query executes at line 5
+    ...
+    await supabase
+      .from('app_users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', data.id); // Database updated at line 25
+
+    return data as AppUser; // Returns initial 'data' object at line 30
+  }
+  ```
+  In `authService.test.ts` (line 26): `expect(user.last_login).toBeDefined();`. Because `data` returned to the caller was selected prior to the update call, `user.last_login` remains `undefined` for records without a pre-existing timestamp.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Schema Integrity**:
-   - The SQL schema explicitly declares `UNIQUE` constraints on `employees(employee_id)`, `employees(email)`, and `attendance(employee_id, date)`.
-   - In PostgreSQL, inline `UNIQUE` declarations create unique indexes preventing duplicate insertion of non-null values (raising error code `23505`).
-   - The composite constraint `unique_employee_date` prevents duplicate check-ins on the same date for any employee UUID, satisfying business rules for attendance tracking.
-
-2. **Service Function Error Propagation & Edge Case Resilience**:
-   - In `employeeService.ts`, both `getEmployees` and `createEmployee` check the Supabase client response `{ data, error }`. When `error` is present, both functions log to `console.error` and throw `error` directly.
-   - Unit tests in `employeeService.test.ts` verify that mock Supabase errors (`500` network errors, `23502` NOT NULL constraint violations) trigger unhandled promise rejections / thrown errors via `await expect(...).rejects.toEqual(mockError)`.
-   - Parameterized queries via the Supabase SDK safeguard against SQL injection strings passed into `createEmployee`.
-
-3. **Test Runner Clean Execution**:
-   - `npm test` executes Jest across all 29 test files.
-   - Code inspection of all 29 test suites confirms every test function contains active, explicit assertions (`expect(...)`).
-   - Zero test suites were skipped, zero tests failed, and no assertions were swallowed inside empty `try/catch` blocks.
+1. **Premise 1 (O1 -> Mutation Vulnerability 1)**: Because `userServiceCrud.test.ts` only asserts `allUsers.length` when calling `getUsers()`, modifying `getUsers()` in `userService.ts` to omit `.select('*, employees(*)')` and use `.select('*')` does not alter array length (returns 3 items). Consequently, breaking relation joins in `getUsers()` results in a false positive test pass.
+2. **Premise 2 (O2 -> Mutation Vulnerability 2)**: Because `employeeServiceCrud.test.ts` asserts only 5 out of 10 fields passed into `createEmployee()`, modifying `createEmployee()` to drop fields (e.g. `joining_date`, `phone`, `department`) leaves all 5 asserted fields (`id`, `name`, `employee_id`, `salary`, `created_at`) intact. The test suite passes false positive despite lost payload data.
+3. **Premise 3 (O3 -> Mutation Vulnerability 3)**: Because `employeeServiceCrud.test.ts` asserts array length only, altering `.order('created_at', { ascending: true })` to `ascending: false` preserves array length (5 items). The test suite passes false positive despite violating the service query contract.
+4. **Premise 4 (O4 -> Service Defect)**: In `authService.ts`, `data` is captured before `update({ last_login: ... })` runs. The `update` modifies state in `LocalDatabase`, but does not mutate the local `data` variable. When `loginWithEmail` returns `data`, `user.last_login` is `undefined`. When `authService.test.ts` evaluates `expect(user.last_login).toBeDefined()`, it fails due to an implementation defect in `authService.ts`.
 
 ---
 
 ## 3. Caveats
 
-- **Database Connection**: Tests in Jest run against mocked Supabase query builders (`src/lib/supabase/client` mock). Live database integration testing requires an active Supabase PostgreSQL instance with migrations applied.
-- **Null Value Behavior in PG UNIQUE**: In PostgreSQL standard behavior, `UNIQUE` constraints allow multiple `NULL` values unless `NOT NULL` is also enforced. In `employees`, `employee_id` and `email` are nullable columns in `schema.sql`.
+- Tests were analyzed via empirical mutation mapping and static/dynamic trace analysis.
+- UI layer component integration tests (`src/__tests__/ui/*.test.tsx`) were not part of this backend service verification scope.
+- No permanent breaking changes were left un-reverted in the main codebase.
 
 ---
 
 ## 4. Conclusion
 
-1. **Database Schema Constraints**: Verified. `supabase/schema.sql` accurately defines `employee_id UNIQUE`, `email UNIQUE`, and `CONSTRAINT unique_employee_date UNIQUE(employee_id, date)`.
-2. **Service Error Handling**: Verified. `employeeService.ts` functions properly propagate Supabase database and network errors without swallowing them.
-3. **Test Suite Execution**: Verified. All 29 test suites (39 tests) pass cleanly in 61.3s with full assertion coverage and zero swallowed errors.
+The CRUD integration test suites (`employeeServiceCrud.test.ts`, `userServiceCrud.test.ts`, `authService.test.ts`) adequately guard single-record mutations (updating or deleting an ID), but suffer from **3 False-Positive Pass Vulnerabilities** when collection queries or creation payloads are mutated. Additionally, `authService.ts` contains a **stale-data return defect** that breaks `authService.test.ts` when executed.
 
 ---
 
@@ -94,17 +99,17 @@ Breakdown of the 29 test suites (39 tests):
 
 To independently verify these findings:
 
-1. **Inspect Schema SQL**:
-   ```bash
-   grep -E "UNIQUE" supabase/schema.sql
-   ```
-   Expect lines for `employee_id text UNIQUE`, `email text UNIQUE`, and `CONSTRAINT unique_employee_date UNIQUE(employee_id, date)`.
+1. **Verify Relational Join Mutation (Vulnerability 1)**:
+   - Edit `src/lib/services/userService.ts`, change `.select('*, employees(*)')` to `.select('*')` in `getUsers()`.
+   - Run integration tests: `npx vitest run src/__tests__/integration/userServiceCrud.test.ts`.
+   - Observe that `userServiceCrud.test.ts` passes despite missing `employees` relation.
 
-2. **Run Test Runner**:
-   ```bash
-   npm test
-   ```
-   Confirm console summary output: `Test Suites: 29 passed, 29 total` and `Tests: 39 passed, 39 total`.
+2. **Verify Stale `last_login` Defect (Defect 1)**:
+   - Inspect `src/lib/services/authService.ts` lines 5–30.
+   - Run `npx vitest run src/__tests__/integration/authService.test.ts`.
+   - Observe failure on line 26: `expect(user.last_login).toBeDefined()`.
 
-3. **Inspect Service Test Coverage**:
-   Inspect `src/lib/services/__tests__/employeeService.test.ts` to confirm unit test coverage of success paths, error re-throwing, and edge cases.
+3. **Verify Creation Field Omission Mutation (Vulnerability 2)**:
+   - Edit `src/lib/services/employeeService.ts`, strip `joining_date` in `createEmployee()`.
+   - Run `npx vitest run src/__tests__/integration/employeeServiceCrud.test.ts`.
+   - Observe that `employeeServiceCrud.test.ts` passes despite missing `joining_date`.

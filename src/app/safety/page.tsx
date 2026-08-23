@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSafetyIncidents, createSafetyIncident, updateIncidentStatus, SafetyIncident, INCIDENT_SEVERITY, INCIDENT_STATUSES } from '@/lib/services/operationsService';
+import { getSafetyIncidents, createSafetyIncident, updateSafetyIncident, updateIncidentStatus, SafetyIncident, INCIDENT_SEVERITY, INCIDENT_STATUSES } from '@/lib/services/operationsService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from '../expenses/expenses.module.css';
@@ -14,7 +14,9 @@ export default function SafetyPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ project_id: '', incident_date: '', reported_by: '', severity: 'Minor', description: '', action_taken: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [form, setForm] = useState({ project_id: '', incident_date: '', reported_by: '', severity: 'Minor', description: '', action_taken: '', status: 'Open' });
 
   const load = async () => {
     setLoading(true);
@@ -29,24 +31,48 @@ export default function SafetyPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openModal = (incident?: SafetyIncident) => {
+    if (incident) {
+      setEditingId(incident.id || null);
+      setForm({
+        project_id: incident.project_id || '',
+        incident_date: incident.incident_date,
+        reported_by: incident.reported_by || '',
+        severity: incident.severity,
+        description: incident.description,
+        action_taken: incident.action_taken || '',
+        status: incident.status || 'Open'
+      });
+    } else {
+      setEditingId(null);
+      setForm({ project_id: '', incident_date: '', reported_by: '', severity: 'Minor', description: '', action_taken: '', status: 'Open' });
+    }
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createSafetyIncident({
+      const payload = {
         project_id: form.project_id,
         incident_date: form.incident_date,
         reported_by: form.reported_by || null,
         severity: form.severity,
         description: form.description,
         action_taken: form.action_taken || null,
-        status: 'Open'
-      });
+        status: form.status
+      };
+      
+      if (editingId) {
+        await updateSafetyIncident(editingId, payload);
+      } else {
+        await createSafetyIncident(payload);
+      }
       setShowModal(false);
-      setForm({ project_id: '', incident_date: '', reported_by: '', severity: 'Minor', description: '', action_taken: '' });
       await load();
     } catch (err) {
-      alert('Failed to log incident.');
+      alert('Failed to save incident.');
     } finally {
       setSaving(false);
     }
@@ -71,7 +97,7 @@ export default function SafetyPage() {
           <h1 className={styles.title}>Safety Log</h1>
           <p className={styles.subtitle}>Track workplace incidents, injuries, and safety compliance.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className={styles.newBtn} style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>+ Log Incident</button>
+        <button onClick={() => openModal()} className={styles.newBtn} style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>+ Log Incident</button>
       </header>
 
       <div className={styles.tableCard}>
@@ -83,7 +109,7 @@ export default function SafetyPage() {
                 <th>Severity</th>
                 <th>Description</th>
                 <th>Action Taken</th>
-                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -104,14 +130,17 @@ export default function SafetyPage() {
                   </td>
                   <td style={{ maxWidth: '200px', whiteSpace: 'normal', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>{i.action_taken || 'None'}</td>
                   <td>
-                    <select 
-                      className={styles.actionSelect} 
-                      value={i.status} 
-                      onChange={(ev) => handleStatusChange(i.id!, ev.target.value)}
-                      style={{ borderColor: statusColors[i.status], color: statusColors[i.status] }}
-                    >
-                      {INCIDENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select 
+                        className={styles.actionSelect} 
+                        value={i.status} 
+                        onChange={(ev) => handleStatusChange(i.id!, ev.target.value)}
+                        style={{ borderColor: statusColors[i.status], color: statusColors[i.status], padding: '4px 8px' }}
+                      >
+                        {INCIDENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <button className={styles.actionSelect} onClick={() => openModal(i)} style={{ padding: '5px 12px' }}>Edit</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -125,7 +154,7 @@ export default function SafetyPage() {
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle} style={{ color: '#ef4444' }}>Log Safety Incident</h2>
+              <h2 className={styles.modalTitle} style={{ color: '#ef4444' }}>{editingId ? 'Edit Incident' : 'Log Safety Incident'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -151,9 +180,16 @@ export default function SafetyPage() {
               </div>
               <div className={styles.fg}><label className={styles.fl}>Incident Description *</label><textarea required value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} className={styles.fi} rows={3} placeholder="What happened?" style={{ resize: 'vertical' }} /></div>
               <div className={styles.fg}><label className={styles.fl}>Immediate Action Taken</label><textarea value={form.action_taken} onChange={e => setForm(f => ({...f, action_taken: e.target.value}))} className={styles.fi} rows={2} placeholder="e.g. First aid provided, work stopped" style={{ resize: 'vertical' }} /></div>
+              {editingId && (
+                <div className={styles.fg}><label className={styles.fl}>Status</label>
+                  <select value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))} className={styles.fi}>
+                    {INCIDENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
               <div className={styles.modalFooter}>
                 <button type="button" onClick={() => setShowModal(false)} className={styles.cancelBtn}>Cancel</button>
-                <button type="submit" disabled={saving} className={styles.submitBtn} style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>{saving ? 'Saving...' : 'Log Incident'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn} style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Log Incident')}</button>
               </div>
             </form>
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSiteReports, createSiteReport, SiteReport } from '@/lib/services/operationsService';
+import { getSiteReports, createSiteReport, updateSiteReport, SiteReport } from '@/lib/services/operationsService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from '../../expenses/expenses.module.css';
@@ -14,6 +14,7 @@ export default function SiteReportsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ project_id: '', report_date: '', submitted_by: '', weather: 'Sunny', work_completed: '', issues_faced: '', materials_used: '' });
 
   const load = async () => {
@@ -29,11 +30,30 @@ export default function SiteReportsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openModal = (report?: SiteReport) => {
+    if (report) {
+      setEditingId(report.id || null);
+      setForm({
+        project_id: report.project_id || '',
+        report_date: report.report_date,
+        submitted_by: report.submitted_by || '',
+        weather: report.weather || 'Sunny',
+        work_completed: report.work_completed || '',
+        issues_faced: report.issues_faced || '',
+        materials_used: report.materials_used || ''
+      });
+    } else {
+      setEditingId(null);
+      setForm({ project_id: '', report_date: '', submitted_by: '', weather: 'Sunny', work_completed: '', issues_faced: '', materials_used: '' });
+    }
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createSiteReport({
+      const payload = {
         project_id: form.project_id,
         report_date: form.report_date,
         submitted_by: form.submitted_by || null,
@@ -41,12 +61,17 @@ export default function SiteReportsPage() {
         work_completed: form.work_completed || null,
         issues_faced: form.issues_faced || null,
         materials_used: form.materials_used || null,
-      });
+      };
+      
+      if (editingId) {
+        await updateSiteReport(editingId, payload);
+      } else {
+        await createSiteReport(payload);
+      }
       setShowModal(false);
-      setForm({ project_id: '', report_date: '', submitted_by: '', weather: 'Sunny', work_completed: '', issues_faced: '', materials_used: '' });
       await load();
     } catch (err) {
-      alert('Failed to submit report.');
+      alert('Failed to save report.');
     } finally {
       setSaving(false);
     }
@@ -59,7 +84,7 @@ export default function SiteReportsPage() {
           <h1 className={styles.title}>Daily Site Reports</h1>
           <p className={styles.subtitle}>Track daily progress, weather, and issues for all active projects.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className={styles.newBtn}>+ New Report</button>
+        <button onClick={() => openModal()} className={styles.newBtn}>+ New Report</button>
       </header>
 
       <div className={styles.tableCard}>
@@ -72,6 +97,7 @@ export default function SiteReportsPage() {
                 <th>Work Completed</th>
                 <th>Issues Faced</th>
                 <th>Submitted By</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -85,9 +111,10 @@ export default function SiteReportsPage() {
                   <td style={{ maxWidth: '300px', whiteSpace: 'normal', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>{r.work_completed || '—'}</td>
                   <td style={{ maxWidth: '200px', whiteSpace: 'normal', fontSize: '0.8rem', color: r.issues_faced ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{r.issues_faced || 'None'}</td>
                   <td className={styles.subCell}>{r.employees?.name || 'Admin'}</td>
+                  <td><button className={styles.actionSelect} onClick={() => openModal(r)}>Edit</button></td>
                 </tr>
               ))}
-              {reports.length === 0 && <tr><td colSpan={5} className={styles.loading}>No reports found.</td></tr>}
+              {reports.length === 0 && <tr><td colSpan={6} className={styles.loading}>No reports found.</td></tr>}
             </tbody>
           </table>
         )}
@@ -97,7 +124,7 @@ export default function SiteReportsPage() {
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Daily Site Report</h2>
+              <h2 className={styles.modalTitle}>{editingId ? 'Edit Report' : 'Daily Site Report'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -126,7 +153,7 @@ export default function SiteReportsPage() {
               <div className={styles.fg}><label className={styles.fl}>Issues Faced</label><textarea value={form.issues_faced} onChange={e => setForm(f => ({...f, issues_faced: e.target.value}))} className={styles.fi} rows={2} placeholder="Any delays, breakdowns, or problems?" style={{ resize: 'vertical' }} /></div>
               <div className={styles.modalFooter}>
                 <button type="button" onClick={() => setShowModal(false)} className={styles.cancelBtn}>Cancel</button>
-                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Submitting...' : 'Submit Report'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Submitting...' : (editingId ? 'Save Changes' : 'Submit Report')}</button>
               </div>
             </form>
           </div>

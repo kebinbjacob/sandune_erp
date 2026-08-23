@@ -17,7 +17,7 @@ export interface LeaveRequest {
 export async function getLeaveRequests(): Promise<LeaveRequest[]> {
   const { data, error } = await supabase
     .from('leave_requests')
-    .select('*, employees(name, role, department)')
+    .select('*, employees:employees!leave_requests_employee_id_fkey(name, role, department)')
     .order('created_at', { ascending: false });
 
   if (error) {

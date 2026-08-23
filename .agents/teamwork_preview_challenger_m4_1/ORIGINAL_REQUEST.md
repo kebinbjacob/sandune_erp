@@ -1,10 +1,6 @@
-## 2026-08-08T15:04:35Z
-You are challenger_m4_1. Your working directory is c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_challenger_m4_1. Create this directory if it doesn't exist.
-
-Objective:
-Perform empirical adversarial testing on backend schema, service operations, and test runner:
-1. Verify database schema UNIQUE constraints in `supabase/schema.sql` (`employee_id`, `email`, `unique_employee_date`).
-2. Test `employeeService.ts` functions with edge cases and verify error handling.
-3. Execute `npm test` and verify all 29 test suites (39 tests) pass cleanly without any swallowed assertions.
-
-Write your report to `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_challenger_m4_1/handoff.md`. Update progress.md and send message when complete.
+## 2026-08-11T14:37:04Z
+Your working directory is: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m4_1
+Your task is to perform empirical adversarial verification on the backend service CRUD test suites:
+1. Inspect src/__tests__/integration/*.test.ts and backend service implementations in src/lib/services/.
+2. Test whether introducing breaking changes to backend services causes tests to fail (no false positive passes).
+3. Document adversarial test findings in c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m4_1\challenge.md and handoff report in c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m4_1\handoff.md.

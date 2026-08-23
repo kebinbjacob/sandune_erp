@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getShifts, createShift, getEmployeeShifts, assignShift, Shift, EmployeeShift } from '@/lib/services/shiftService';
+import { getShifts, createShift, updateShift, getEmployeeShifts, assignShift, updateEmployeeShift, Shift, EmployeeShift } from '@/lib/services/shiftService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from '../expenses/expenses.module.css';
 
@@ -13,6 +13,9 @@ export default function ShiftsPage() {
 
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [editingAssignId, setEditingAssignId] = useState<string | null>(null);
   
   const [shiftForm, setShiftForm] = useState({ name: '', start_time: '08:00', end_time: '17:00' });
   const [assignForm, setAssignForm] = useState({ employee_id: '', shift_id: '', effective_from: '' });
@@ -30,24 +33,60 @@ export default function ShiftsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openShiftModal = (shift?: Shift) => {
+    if (shift) {
+      setEditingShiftId(shift.id || null);
+      setShiftForm({
+        name: shift.name,
+        start_time: shift.start_time,
+        end_time: shift.end_time
+      });
+    } else {
+      setEditingShiftId(null);
+      setShiftForm({ name: '', start_time: '08:00', end_time: '17:00' });
+    }
+    setShowShiftModal(true);
+  };
+
+  const openAssignModal = (assignment?: EmployeeShift) => {
+    if (assignment) {
+      setEditingAssignId(assignment.id || null);
+      setAssignForm({
+        employee_id: assignment.employee_id,
+        shift_id: assignment.shift_id,
+        effective_from: assignment.effective_from
+      });
+    } else {
+      setEditingAssignId(null);
+      setAssignForm({ employee_id: '', shift_id: '', effective_from: '' });
+    }
+    setShowAssignModal(true);
+  };
+
   const handleCreateShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createShift(shiftForm);
+      if (editingShiftId) {
+        await updateShift(editingShiftId, shiftForm);
+      } else {
+        await createShift(shiftForm);
+      }
       setShowShiftModal(false);
-      setShiftForm({ name: '', start_time: '08:00', end_time: '17:00' });
       await load();
-    } catch (err) { alert('Failed to create shift'); }
+    } catch (err) { alert('Failed to save shift'); }
   };
 
   const handleAssignShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await assignShift(assignForm);
+      if (editingAssignId) {
+        await updateEmployeeShift(editingAssignId, assignForm);
+      } else {
+        await assignShift(assignForm);
+      }
       setShowAssignModal(false);
-      setAssignForm({ employee_id: '', shift_id: '', effective_from: '' });
       await load();
-    } catch (err) { alert('Failed to assign shift'); }
+    } catch (err) { alert('Failed to save assignment'); }
   };
 
   return (
@@ -58,14 +97,15 @@ export default function ShiftsPage() {
           <p className={styles.subtitle}>Manage worker shifts and assign them to schedules.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setShowShiftModal(true)} className={styles.cancelBtn} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>+ Define Shift</button>
-          <button onClick={() => setShowAssignModal(true)} className={styles.newBtn}>+ Assign Employee</button>
+          <button onClick={() => openShiftModal()} className={styles.cancelBtn} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>+ Define Shift</button>
+          <button onClick={() => openAssignModal()} className={styles.newBtn}>+ Assign Employee</button>
         </div>
       </header>
 
       <div className={styles.summaryGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         {shifts.map(s => (
-          <div key={s.id} className={styles.sumCard}>
+          <div key={s.id} className={styles.sumCard} style={{ cursor: 'pointer', position: 'relative' }} onClick={() => openShiftModal(s)}>
+            <div style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.8rem', color: '#818cf8' }}>Edit</div>
             <span className={styles.sumVal} style={{ fontSize: '1.2rem', color: '#6366f1' }}>{s.name}</span>
             <span className={styles.sumLabel}>{s.start_time.slice(0,5)} - {s.end_time.slice(0,5)}</span>
           </div>
@@ -81,6 +121,7 @@ export default function ShiftsPage() {
                 <th>Assigned Shift</th>
                 <th>Effective From</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -102,10 +143,11 @@ export default function ShiftsPage() {
                         {isPast ? 'Active' : 'Upcoming'}
                       </span>
                     </td>
+                    <td><button className={styles.actionSelect} onClick={() => openAssignModal(a)}>Edit</button></td>
                   </tr>
                 );
               })}
-              {assignments.length === 0 && <tr><td colSpan={4} className={styles.loading}>No employees assigned to shifts.</td></tr>}
+              {assignments.length === 0 && <tr><td colSpan={5} className={styles.loading}>No employees assigned to shifts.</td></tr>}
             </tbody>
           </table>
         )}
@@ -115,7 +157,7 @@ export default function ShiftsPage() {
         <div className={styles.overlay} onClick={() => setShowShiftModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Define Shift</h2>
+              <h2 className={styles.modalTitle}>{editingShiftId ? 'Edit Shift' : 'Define Shift'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowShiftModal(false)}>✕</button>
             </div>
             <form onSubmit={handleCreateShift} className={styles.modalForm}>
@@ -125,7 +167,7 @@ export default function ShiftsPage() {
                 <div className={styles.fg}><label className={styles.fl}>End Time</label><input required type="time" value={shiftForm.end_time} onChange={e => setShiftForm(f => ({...f, end_time: e.target.value}))} className={styles.fi} /></div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="submit" className={styles.submitBtn}>Save Shift</button>
+                <button type="submit" className={styles.submitBtn}>{editingShiftId ? 'Save Changes' : 'Save Shift'}</button>
               </div>
             </form>
           </div>
@@ -136,12 +178,12 @@ export default function ShiftsPage() {
         <div className={styles.overlay} onClick={() => setShowAssignModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Assign Shift</h2>
+              <h2 className={styles.modalTitle}>{editingAssignId ? 'Edit Assignment' : 'Assign Shift'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowAssignModal(false)}>✕</button>
             </div>
             <form onSubmit={handleAssignShift} className={styles.modalForm}>
               <div className={styles.fg}><label className={styles.fl}>Employee</label>
-                <select required value={assignForm.employee_id} onChange={e => setAssignForm(f => ({...f, employee_id: e.target.value}))} className={styles.fi}>
+                <select required value={assignForm.employee_id} onChange={e => setAssignForm(f => ({...f, employee_id: e.target.value}))} className={styles.fi} disabled={!!editingAssignId}>
                   <option value="">Select Employee...</option>
                   {employees.map(e => <option key={e.id} value={e.id}>{e.name} - {e.role}</option>)}
                 </select>
@@ -154,7 +196,7 @@ export default function ShiftsPage() {
               </div>
               <div className={styles.fg}><label className={styles.fl}>Effective From</label><input required type="date" value={assignForm.effective_from} onChange={e => setAssignForm(f => ({...f, effective_from: e.target.value}))} className={styles.fi} /></div>
               <div className={styles.modalFooter}>
-                <button type="submit" className={styles.submitBtn}>Assign</button>
+                <button type="submit" className={styles.submitBtn}>{editingAssignId ? 'Save Changes' : 'Assign'}</button>
               </div>
             </form>
           </div>

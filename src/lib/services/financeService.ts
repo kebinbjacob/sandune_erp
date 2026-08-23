@@ -42,3 +42,8 @@ export async function updateExpenseStatus(id: string, status: string): Promise<v
   const { error } = await supabase.from('expenses').update({ status }).eq('id', id);
   if (error) throw error;
 }
+
+export async function updateExpense(id: string, updates: Partial<Expense>): Promise<void> {
+  const { error } = await supabase.from('expenses').update(updates).eq('id', id);
+  if (error) throw error;
+}

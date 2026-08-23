@@ -1,100 +1,56 @@
-# Forensic Audit Report & Handoff
-
-**Work Product**: Sandune Core HR Remediated Codebase & Test Suite
-**Profile**: General Project
-**Verdict**: CLEAN
-
----
+# Forensic Audit Handoff Report
 
 ## 1. Observation
+Direct empirical observations obtained during inspection and execution of the Vitest test suite and local database work product:
 
-### Code Authenticity Verification
-- **`supabase/schema.sql`**:
-  - DDL: Valid SQL creating tables `employees` (lines 8-22), `attendance` (lines 25-35), and `leave_requests` (lines 38-48).
-  - RLS Policies: Row Level Security enabled for all three tables:
-    - Line 53: `ALTER TABLE employees ENABLE ROW LEVEL SECURITY;`
-    - Line 54: `ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;`
-    - Line 55: `ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;`
-    - RLS Policies defined for SELECT, INSERT, UPDATE, DELETE for `public` (lines 62-92).
-  - Seed INSERTs: Lines 97-103 contain valid seed data (`INSERT INTO employees ... VALUES ('EMP-001', ...) ON CONFLICT DO NOTHING;`).
-  - UNIQUE Constraints:
-    - Line 10: `employee_id text UNIQUE`
-    - Line 12: `email text UNIQUE`
-    - Line 34: `CONSTRAINT unique_employee_date UNIQUE(employee_id, date)`
-
-- **`src/lib/supabase/client.ts`**:
-  - Line 1: `import { createClient } from '@supabase/supabase-js';`
-  - Line 3: `const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';`
-  - Line 4: `const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';`
-  - Line 6: `export const supabase = createClient(supabaseUrl, supabaseAnonKey);`
-  - Authentic initialization using official `@supabase/supabase-js` SDK and environment variables.
-
-- **`src/lib/services/employeeService.ts`**:
-  - Genuine database queries:
-    - `getEmployees()`: Line 20 calls `supabase.from('employees').select('*').order('created_at', { ascending: true })`.
-    - `createEmployee()`: Line 33 calls `supabase.from('employees').insert([employeeData]).select().single()`.
-  - Errors are logged and re-thrown (lines 27, 41); no facade or mocked responses.
-
-- **`src/app/employees/page.tsx` & `src/app/create/page.tsx`**:
-  - `src/app/employees/page.tsx`: Line 7 imports `getEmployees` from `@/lib/services/employeeService` and calls `await getEmployees()` inside `useEffect` (line 44).
-  - `src/app/create/page.tsx`: Line 5 imports `createEmployee` from `@/lib/services/employeeService` and calls `await createEmployee(...)` in `handleSubmit` (line 49).
-
-### Test Integrity Verification
-- **`generate-tests.js` & Page Tests (`src/app/**/*.test.tsx`)**:
-  - 25 page test files present across `src/app`.
-  - Zero `try...catch` blocks or error-swallowing wrappers exist in `generate-tests.js` or in any of the 25 test files.
-  - Tests directly invoke React Testing Library `render(<Page />)` and assert `expect(container).toBeTruthy()`.
-
-- **Configuration Integrity**:
-  - `tsconfig.json`: Line 21 specifies `"baseUrl": "."` and lines 22-24 specify `"paths": { "@/*": ["./src/*"] }`.
-  - `jest.config.js`: Lines 10-12 specify `moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' }`.
-
-### Test Execution & Build Verification
-- **`npm test` Execution**:
-  - Command: `npm test`
-  - Result: 30 test suites passed, 50 individual tests passed, 0 failed, 0 snapshot failures.
-- **`npm run build` Execution**:
-  - Command: `npm run build`
-  - Result: Compiled successfully in 25.7s, TypeScript check completed cleanly in 22.5s, static HTML generation succeeded for 28 routes.
-
----
+- **Command Executed**: `npm test` (`vitest run`)
+- **Overall Result**: 10 test files failed, 26 test files passed (36 total files). 24 tests failed, 66 tests passed (90 total tests).
+- **Observation 1 (Missing Import)**:
+  - File: `src/lib/services/__tests__/localDbIntegration.test.ts` (lines 174, 183, 192, 205, 214, 227)
+  - Failure: Calling `createTestSupabaseClient()` throws `ReferenceError: createTestSupabaseClient is not defined`.
+  - Verbatim Log:
+    ```text
+    FAIL src/lib/services/__tests__/localDbIntegration.test.ts > Local Database Infrastructure & Integration Testing (Requirement R2) > LocalQueryBuilder Edge Cases & PGRST116 Error Handling > returns PGRST116 error when .single() matches 0 rows in select
+    ReferenceError: createTestSupabaseClient is not defined
+    ```
+- **Observation 2 (Invalid Relative URL in Node Fetch)**:
+  - File: `src/lib/services/userService.ts` (line 46)
+  - Code: `const res = await fetch('/api/admin/users', { ... });`
+  - Verbatim Log:
+    ```text
+    FAIL src/__tests__/integration/userServiceCrud.test.ts > User Service Stateful CRUD Integration Tests > performs complete CRUD lifecycle for user records
+    TypeError: Failed to parse URL from /api/admin/users
+    ```
+- **Observation 3 (Stale Object Return in Auth Service)**:
+  - File: `src/lib/services/authService.ts` (lines 21–45)
+  - Failure: `loginWithEmail` queries user profile prior to setting `last_login`, returning the initial object without updating `user.last_login`.
+  - Verbatim Log:
+    ```text
+    FAIL src/__tests__/integration/authService.test.ts > Auth Service Integration & Session Handling Tests > loginWithEmail Service Function > updates last_login timestamp in local database on successful login
+    AssertionError: expected undefined to be defined
+    ```
+- **Observation 4 (Local Database Integrity)**:
+  - File: `src/lib/db/localDb.ts`
+  - Inspection confirms authentic in-memory Map table storage and full query filtering (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `is`, `like`, `ilike`), ordering, limits, and joins. No hardcoded result stubs or dummy facades were found in `localDb.ts`.
 
 ## 2. Logic Chain
-
-1. **Schema & Database Layer**:
-   - The PostgreSQL DDL schema in `supabase/schema.sql` defines structured relational tables with enforced UNIQUE constraints (`employee_id`, `email`, composite `unique_employee_date`), active RLS policy enforcement via `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, and seed INSERT statements.
-2. **Client & Service Integration**:
-   - `src/lib/supabase/client.ts` imports genuine `@supabase/supabase-js` `createClient` and binds to `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-   - `src/lib/services/employeeService.ts` executes real Supabase queries (`select('*')`, `insert()`) with error propagation rather than stubbed static mock return values.
-   - UI pages `src/app/employees/page.tsx` and `src/app/create/page.tsx` wire directly into `employeeService.ts` functions.
-3. **Test Suite Integrity**:
-   - No `try...catch` error masking was injected into `generate-tests.js` or test files; any component render failure will immediately fail the Jest suite.
-   - Alias configuration in `tsconfig.json` and `jest.config.js` properly maps `@/*` to `<rootDir>/src/*`.
-4. **Empirical Verification**:
-   - Both `npm test` (30 suites passed) and `npm run build` (28 routes prerendered) executed successfully with 0 errors.
-
-Conclusion: The work product is clean of integrity violations.
-
----
+1. **From Observation 4**: `LocalDatabase` and `LocalQueryBuilder` in `src/lib/db/localDb.ts` are cleanly designed and provide non-hardcoded, authentic in-memory database execution.
+2. **From Observation 1**: `src/lib/services/__tests__/localDbIntegration.test.ts` references `createTestSupabaseClient()` without importing it from `@/lib/supabase/testDb`. This leads directly to unhandled runtime `ReferenceError` during test suite execution.
+3. **From Observation 2**: `createUser()` in `src/lib/services/userService.ts` performs a relative `fetch('/api/admin/users')`. When executed in Node/Vitest environment without a configured base URL, `fetch` throws `TypeError: Failed to parse URL`.
+4. **From Observation 3**: `loginWithEmail()` in `src/lib/services/authService.ts` queries the user record before performing `.update({ last_login })` on `app_users`, returning an un-updated JavaScript object where `last_login` is `undefined`.
+5. **From Observations 1, 2, 3**: When running `npm test`, 10 test files fail with 24 failing test assertions. Under General Project Forensic Integrity rules, any test failure or runtime syntax/reference error mandates a verdict of `INTEGRITY VIOLATION`.
 
 ## 3. Caveats
-- Production deployment will require valid Supabase project credentials in `.env.local` (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`) for real database connectivity.
-- Local test execution runs with Jest mocks for `next/navigation` and `recharts` to accommodate JSDOM rendering constraints.
-
----
+- UI component test files outside the core database scope (`src/app/projects/new/page.test.tsx`, `src/app/employees/new/page.test.tsx`, `src/components/__tests__/Sidebar.test.tsx`) also failed due to unmounted Next.js App Router context and missing `AuthProvider` wrappers. While secondary to database integration, they contribute to overall test suite failure.
+- No further caveats exist for backend service and database auditing.
 
 ## 4. Conclusion
-
-Final Verdict: **CLEAN**
-
-The remediated codebase passes all code authenticity, test integrity, and build/test execution checks. No prohibited patterns, hardcoded test facades, or error swallowing mechanisms were detected.
-
----
+The Vitest & Local Database work product demonstrates authentic, non-facade architecture in `src/lib/db/localDb.ts`. However, due to multiple test suite failures, missing imports (`createTestSupabaseClient`), relative URL fetch errors, and stale return value handling in auth service, the final forensic verdict is **`INTEGRITY VIOLATION`**. The work product MUST be rejected until these test execution and service integration flaws are rectified.
 
 ## 5. Verification Method
-
-To independently re-verify this verdict:
-1. Run `npm test` to confirm all 30 test suites pass cleanly.
-2. Run `npm run build` to confirm Next.js static site generation and TypeScript checking succeed.
-3. Inspect `supabase/schema.sql` to verify RLS (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`), DDL, seed data, and UNIQUE constraints.
-4. Inspect `src/lib/supabase/client.ts`, `src/lib/services/employeeService.ts`, `src/app/employees/page.tsx`, and `src/app/create/page.tsx` to verify genuine service calls and SDK initialization.
+To independently verify this audit verdict:
+1. Run `npm test` from project root `c:\Users\kelvin babu\Downloads\sandune-main\sandune-main`.
+2. Observe output showing 10 failing test files and 24 failing tests.
+3. Inspect `src/lib/services/__tests__/localDbIntegration.test.ts` line 2 to confirm missing `createTestSupabaseClient` import.
+4. Inspect `src/lib/services/userService.ts` line 46 to observe relative `fetch('/api/admin/users')`.
+5. Inspect `src/lib/services/authService.ts` lines 21–45 to observe stale user object return.

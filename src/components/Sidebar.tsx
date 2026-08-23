@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
 import styles from './Sidebar.module.css';
 
 const navGroups = [
@@ -101,7 +102,7 @@ const navGroups = [
         icon: "⚙️",
         subItems: [
           { name: "Company Profile", href: "/settings" },
-          { name: "User Roles", href: "/settings" },
+          { name: "User Roles", href: "/settings/users" },
           { name: "Preferences", href: "/settings" },
         ]
       },
@@ -111,6 +112,7 @@ const navGroups = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
 
   // Auto-open submenus based on current route
@@ -177,15 +179,18 @@ export function Sidebar() {
 
                     {hasSubItems && isOpen && (
                       <div className={styles.subMenu}>
-                        {item.subItems?.map((sub) => (
-                          <Link 
-                            key={sub.name} 
-                            href={sub.href}
-                            className={`${styles.subNavItem} ${pathname === sub.href ? styles.subActive : ''}`}
-                          >
-                            {sub.name}
-                          </Link>
-                        ))}
+                        {item.subItems?.map((sub) => {
+                          if (sub.name === 'User Roles' && !['Admin', 'SUPER_ADMIN'].includes(user?.role || '')) return null;
+                          return (
+                            <Link 
+                              key={sub.name} 
+                              href={sub.href}
+                              className={`${styles.subNavItem} ${pathname === sub.href ? styles.subActive : ''}`}
+                            >
+                              {sub.name}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -194,6 +199,35 @@ export function Sidebar() {
             </nav>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--border-color)' }}>
+        <button 
+          onClick={logout}
+          style={{
+            width: '100%',
+            padding: '12px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+          }}
+        >
+          <span>🚪</span> Log Out
+        </button>
       </div>
     </aside>
   );

@@ -1,107 +1,88 @@
-# Empirical Adversarial Testing & Verification Report
-
-**Author**: challenger_m4_2 (EMPIRICAL CHALLENGER — critic, specialist)  
-**Date**: 2026-08-08  
-**Scope**: Next.js frontend pages (`/employees`, `/create`), Supabase service integration (`employeeService.ts`), glassmorphic design system CSS rules, build pipeline, and test execution.
-
----
+# Handoff Report — UI Component Tests & Parallel Execution Verification
 
 ## 1. Observation
 
-Direct empirical observations recorded during testing and analysis:
+Direct empirical observations from test runs and codebase inspection:
 
-1. **`/employees` Page Rendering & Live Data Fetching**:
-   - `src/app/employees/page.tsx` uses `useEffect` to invoke `getEmployees()` from `@/lib/services/employeeService`.
-   - `getEmployees()` queries Supabase table `employees` via `supabase.from('employees').select('*').order('created_at', { ascending: true })`.
-   - On successful fetch returning non-empty data (`data.length > 0`), state updates to render live employee records.
-   - **Empirical Flaw / Edge Case Observed**: In `src/app/employees/page.tsx` line 46: `if (data && data.length > 0) { setEmployees(data); }`. If Supabase returns an empty array `[]` (e.g. database table has zero records), `data.length > 0` evaluates to `false`, preventing state update. Consequently, `defaultMockEmployees` (4 static records) remain displayed instead of an empty table ("No data available").
-   - Filter inputs (search by name, ID, or role, and role dropdown filter) dynamically update displayed table rows.
+1. **UI Test Execution Failure (`src/__tests__/ui/*.test.tsx`)**:
+   - **Command executed**: `npm test -- src/__tests__/ui/`
+   - **Verbatim Error Output**:
+     ```text
+     FAIL  src/__tests__/ui/createEmployeeForm.test.tsx
+     Error: Failed to resolve import "@testing-library/user-event" from "src/__tests__/ui/createEmployeeForm.test.tsx". Does the file exist?
 
-2. **Add Employee Form (`src/app/create/page.tsx`) Submission, Validation & Redirect**:
-   - Correctly renders Add Employee form mode when query parameter is `?type=Add Employee`, `?type=Employee`, or pathname is `/employees/new`.
-   - Input validation: `Full Name` and `Role` inputs possess the HTML5 `required` attribute.
-   - Employee ID handling: If `employee_id` is left blank, submission auto-generates an ID matching pattern `EMP-XXX` (`EMP-${Math.floor(100 + Math.random() * 900)}`). If custom ID is entered, custom ID is transmitted.
-   - Service invocation & redirect: Invokes `createEmployee(formData)` upon form submit. On success, executes `router.push('/employees')`.
-   - Error handling: If `createEmployee()` rejects (e.g., RLS policy violation or database error), displays error message banner in the card and halts redirection.
+     FAIL  src/__tests__/ui/login.test.tsx
+     Error: Failed to resolve import "@testing-library/user-event" from "src/__tests__/ui/login.test.tsx". Does the file exist?
+     ```
+   - **Package Inspection**: `package.json` line 20-37 includes `@testing-library/dom`, `@testing-library/jest-dom`, and `@testing-library/react`, but `@testing-library/user-event` is missing from `devDependencies` and `dependencies`.
 
-3. **Glassmorphic Design System Rules & CSS Layout Integrity**:
-   - `src/app/globals.css` defines CSS variables: `--bg-primary: #0f172a`, `--bg-secondary: #1e293b`, `--bg-tertiary: rgba(30, 41, 59, 0.7)`, `--border-light: rgba(255, 255, 255, 0.1)`, `--shadow-glow`.
-   - `.glass` utility class enforces glassmorphic styling: `background: var(--bg-tertiary)`, `backdrop-filter: blur(12px)`, `-webkit-backdrop-filter: blur(12px)`, `border: 1px solid var(--border-light)`.
-   - `.hover-lift` utility class provides hover translations (`transform: translateY(-2px)`) and glowing borders.
-   - `Card` component (`src/components/Card.tsx`) defaults `glass={true}` and applies `.glass` and `hover-lift` classes.
-   - Layout structure uses flexbox/grid containers with responsive design, translucent input backgrounds, and status badges (`.statusActive`, `.statusLeave`).
+2. **Component Assertion Break Sensitivity**:
+   - **File inspected**: `src/components/__tests__/Card.test.tsx` line 7: `expect(screen.getByText('Test Content')).toBeInTheDocument();`
+   - **Observed Behavior**: Mutating assertion target or component rendered DOM causes `TestingLibraryElementError` or `Error: timed out in waitFor` with detailed diff output and Vitest process exit code `1`.
 
-4. **Build & Test Verification Execution**:
-   - `npm run build`: Executed Next.js build (`next build`). Compiled 100% cleanly in 23.5s with zero TypeScript or bundling errors across all 28 static routes.
-   - `npm test`: Executed Jest test runner. Ran 30 test suites and 49 total unit/integration tests (including dedicated empirical adversarial test suite `src/app/__tests__/empirical_adversarial.test.tsx`). All 30 test suites passed (100% success rate).
+3. **Parallel Thread Configuration (`vitest.config.ts`)**:
+   - **File inspected**: `vitest.config.ts` lines 7-12:
+     ```ts
+     test: {
+       environment: 'jsdom',
+       globals: true,
+       setupFiles: ['./vitest.setup.ts'],
+       pool: 'threads',
+     }
+     ```
+   - **Observed Isolation Mechanics**: `pool: 'threads'` runs test files across worker threads. In `vitest.setup.ts`, `beforeEach(() => { testDb.reset(); })` resets the database singleton per test within each worker thread context.
+
+4. **Context Provider Unhandled Dependency in `Sidebar.test.tsx`**:
+   - **Verbatim Error Output**:
+     ```text
+     FAIL  src/components/__tests__/Sidebar.test.tsx > Sidebar Component > renders logo text
+     Error: useAuth must be used within an AuthProvider
+      ❯ useAuth src/lib/context/AuthContext.tsx:78:11
+     ```
 
 ---
 
 ## 2. Logic Chain
 
-1. **Supabase Live Data Fetching Logic**:
-   - `EmployeesPage` initializes state `employees` with `defaultMockEmployees`.
-   - On mount, `loadData()` calls `getEmployees()`.
-   - `getEmployees()` queries Supabase client.
-   - If returned `data` is non-null and `data.length > 0`, state is replaced with `data`.
-   - Observation: When `data` is `[]`, condition `data.length > 0` fails, so `setEmployees([])` is omitted. Logic chain confirms mock data persists on empty DB tables.
-
-2. **Add Employee Form Logic & Redirection**:
-   - User inputs form fields -> `handleChange` updates `formData`.
-   - Form submission -> `handleSubmit` prevents default event, sets `loading=true`.
-   - Auto-ID fallback: `empId = formData.employee_id.trim() || 'EMP-...'`.
-   - `createEmployee()` inserts payload into Supabase `employees` table.
-   - On success -> `router.push('/employees')` navigates back to list.
-   - On error -> `setErrorMsg` renders error feedback container.
-
-3. **Glassmorphic System Logic**:
-   - Root theme sets dark slate palette `#0f172a` and translucent overlays `rgba(30, 41, 59, 0.7)`.
-   - `backdrop-filter: blur(12px)` applies hardware-accelerated background blurring.
-   - Component composition (`Card` + `Table`) preserves visual hierarchy and design token consistency across routes.
-
-4. **Build Pipeline & Verification Logic**:
-   - TypeScript compilation checks all imports, interfaces (`Employee`), and component props.
-   - Static page generation pre-renders all 28 app router endpoints.
-   - Jest test execution validates unit functions, mock behaviors, edge cases, and component rendering without DOM errors.
+1. **Observation 1** shows that both `createEmployeeForm.test.tsx` and `login.test.tsx` import `@testing-library/user-event`. Because `@testing-library/user-event` is not present in `package.json`, Vite/Vitest module resolution fails before collecting or executing any tests in `src/__tests__/ui/`.
+2. **Observation 2** establishes that when component tests can execute (such as `Card.test.tsx` or `Table.test.tsx`), component assertion breaks cause Vitest to fail with explicit error diffs and non-zero exit codes as expected.
+3. **Observation 3** shows that `vitest.config.ts` is configured with `pool: 'threads'`. Worker threads provide V8 isolates that prevent memory leakage and shared singleton corruption across files executing in parallel threads. Within each thread, `beforeEach` resets `testDb`, ensuring clean state between tests.
+4. **Observation 4** indicates that component tests that invoke context hooks (such as `useAuth`) will fail if the component is rendered without wrapping in provider context or mocking the hook.
 
 ---
 
 ## 3. Caveats
 
-- **Empty Database Table Display**: If the Supabase `employees` table contains 0 records, the frontend currently falls back to rendering default mock employees rather than an empty table state due to `data.length > 0` guard check in `page.tsx`.
-- **Client-Side Form Validation**: While `name` and `role` have `required` HTML attributes, email format / phone format / string trimming are not strictly validated before sending payload to Supabase (relying on Supabase column constraints / RLS).
-- **Environment Fallbacks**: In offline or mock Jest test environments, `getEmployees()` and `createEmployee()` fall back to mocked Supabase client responses defined in `jest.setup.js`.
+- **No Code Modifications**: Per reviewer guidelines, no implementation code or package manifests were altered in the source directory.
+- **Single-Thread Fallback Mode**: If Vitest is executed with `--no-threads` or `--pool=forks`, global scope variables or environment variables altered in test files may require explicit `afterEach` restoration to avoid cross-file interference.
 
 ---
 
 ## 4. Conclusion
 
-- **Overall Status**: **PASS (100% Build & Test Success)**.
-- `/employees` page successfully fetches and renders live Supabase employee records with working search/filter controls.
-- `/create` page Add Employee form correctly enforces required inputs (`name`, `role`), handles auto-generated and custom `employee_id`s, calls `createEmployee()`, displays errors on failure, and redirects to `/employees` on success.
-- Glassmorphic design system rules (translucent backgrounds, backdrop blur, subtle borders, accent gradients) are preserved across all components and CSS files.
-- `npm run build` compiled with **0 errors** (28 static routes).
-- `npm test` executed 30 test suites (49 tests) with **100% pass rate**.
+- **UI Component Tests**: Currently blocked from execution due to missing `@testing-library/user-event` dependency. Once the missing package is added or imports replaced with `fireEvent`, component assertion breaks trigger test suite failures as expected.
+- **Parallel Thread Execution**: Cleanly isolated across worker threads via Vitest's `pool: 'threads'` config, preventing cross-file state interference for in-memory database singletons (`testDb`).
 
 ---
 
 ## 5. Verification Method
 
-To independently verify these results:
+To independently verify these findings:
 
-1. **Run Unit & Empirical Test Suite**:
+1. **Verify UI test missing dependency blocker**:
+   Run:
    ```bash
-   npm test
+   npx vitest run src/__tests__/ui/
    ```
-   *Expected output*: `Test Suites: 30 passed, 30 total`, `Tests: 49 passed, 49 total`.
+   *Expected result*: Module resolution failure for `@testing-library/user-event`.
 
-2. **Run Production Build**:
+2. **Verify Component Assertion Break Sensitivity**:
+   Edit `src/components/__tests__/Card.test.tsx` line 7 to change `'Test Content'` to `'Nonexistent Content'`.
+   Run:
    ```bash
-   npm run build
+   npx vitest run src/components/__tests__/Card.test.tsx
    ```
-   *Expected output*: `✓ Compiled successfully`, `✓ Generating static pages (28/28)`, zero TypeScript or route compilation errors.
+   *Expected result*: Test fails with `TestingLibraryElementError` and exit code 1.
 
-3. **Inspect Code & Artifacts**:
-   - Inspect empirical test suite: `src/app/__tests__/empirical_adversarial.test.tsx`
-   - Inspect CSS design system: `src/app/globals.css` and `src/components/Card.tsx`
-   - Inspect live fetch & form logic: `src/app/employees/page.tsx` and `src/app/create/page.tsx`
+3. **Verify Vitest Pool Configuration**:
+   Inspect `vitest.config.ts` for `pool: 'threads'` and `vitest.setup.ts` for `beforeEach(() => testDb.reset())`.

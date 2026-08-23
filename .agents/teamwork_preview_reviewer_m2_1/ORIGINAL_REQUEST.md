@@ -1,12 +1,9 @@
-## 2026-08-08T14:48:42Z
-You are reviewer_m2_1. Your working directory is c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m2_1. Create this directory if it doesn't exist.
-
-Objective:
-Perform a comprehensive code review of the Supabase Database Schema, RLS policies, and Service Layer implementation:
-1. Inspect `supabase/schema.sql` to verify schema DDL for `employees`, `attendance`, `leave_requests`, primary/foreign key constraints, default values, RLS enablement (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`), RLS policies for SELECT, INSERT, UPDATE, DELETE, and seed INSERT data.
-2. Inspect `src/lib/supabase/client.ts` to verify standard environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) usage.
-3. Inspect `src/lib/services/employeeService.ts` for type safety (`Employee` interface), `getEmployees()`, and `createEmployee()` functions, and error handling.
-4. Execute `npm test` to verify build/test status and record test results.
-
-Write your review report to `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m2_1/handoff.md`. Also update progress.md in your working directory.
-Send a message back to orchestrator when completed.
+## 2026-08-11T19:44:15Z
+<USER_REQUEST>
+Your working directory is: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_reviewer_m2_1
+Your task is to review the Local Database Infrastructure setup created in Milestone 2:
+1. Inspect src/lib/db/localDb.ts, src/lib/supabase/testDb.ts, and src/lib/services/__tests__/localDbIntegration.test.ts.
+2. Verify that localDb.ts and testDb.ts implement stateful in-memory / local database CRUD operations (SELECT, INSERT, UPDATE, DELETE) satisfying Requirement R2.
+3. Check that backend services perform real state updates against the local database rather than returning hardcoded static dummy objects.
+4. Write your review report to c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_reviewer_m2_1\review.md and handoff report to c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_reviewer_m2_1\handoff.md.
+</USER_REQUEST>

@@ -1,52 +1,37 @@
-# BRIEFING — 2026-08-08T15:10:00Z
+# BRIEFING — 2026-08-11T14:37:04Z
 
 ## Mission
-Perform final code review of Database Schema, RLS Policies, Supabase Client & Service, and Jest Configuration.
+Review the Backend Service CRUD integration test implementation in Milestone 3.
 
 ## 🔒 My Identity
-- Archetype: Reviewer & Adversarial Critic
+- Archetype: reviewer, critic
 - Roles: reviewer, critic
-- Working directory: c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m4_1
-- Original parent: f8ba576e-f5e5-444f-a132-84db8e3e892e
-- Milestone: M4 Review
+- Working directory: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_reviewer_m4_1
+- Original parent: 3f812e88-fd78-436b-9995-5ce5c6652b76
+- Milestone: M4
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code.
-- Strictly audit for integrity violations (hardcoded test outputs, dummy implementations, shortcuts, self-certifying data).
+- Review-only — do NOT modify implementation code
+- Check for integrity violations (hardcoded mocks, fake implementations, self-certifying work)
+- Verify stateful testDb integration, CRUD coverage, PGRST116 single-row contract verification, error handling
 
 ## Current Parent
-- Conversation ID: f8ba576e-f5e5-444f-a132-84db8e3e892e
-- Updated: 2026-08-08T15:10:00Z
+- Conversation ID: 3f812e88-fd78-436b-9995-5ce5c6652b76
+- Updated: 2026-08-11T14:37:04Z
 
 ## Review Scope
-- **Files to review**: `supabase/schema.sql`, `tsconfig.json`, `jest.config.js`, `src/lib/supabase/client.ts`, `src/lib/services/employeeService.ts`
-- **Interface contracts**: PROJECT.md / SCOPE.md / Schema requirements
-- **Review criteria**: Schema correctness, RLS enablement/policies, UNIQUE constraints, Jest & TS config, Supabase client/service correctness, test pass status.
-
-## Review Checklist
-- **Items reviewed**:
-  - `supabase/schema.sql` — Verified (DDL for employees, attendance, leave_requests, RLS enablement, RLS policies, seed data, UNIQUE constraints)
-  - `tsconfig.json` — Verified (`"baseUrl": "."`)
-  - `jest.config.js` — Verified (`moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' }`)
-  - `src/lib/supabase/client.ts` — Verified (`createClient` export)
-  - `src/lib/services/employeeService.ts` — Verified (`getEmployees`, `createEmployee`)
-  - `npm test` execution — 29/30 suites passed, 1 suite failed (7 failures in `empirical_adversarial.test.tsx`)
-- **Verdict**: REQUEST_CHANGES
-- **Unverified claims**: None
-
-## Attack Surface
-- **Hypotheses tested**: SQL Injection strings, XSS payloads, missing optional fields in service methods
-- **Vulnerabilities found**: None in production code. 1 test suite mocking flaw in `empirical_adversarial.test.tsx` (`TypeError: Cannot redefine property: getEmployees`).
-- **Untested angles**: Live real Supabase network connection (tested via global Jest client mock)
+- **Files to review**:
+  - `src/__tests__/integration/authService.test.ts`
+  - `src/__tests__/integration/userServiceCrud.test.ts`
+  - `src/__tests__/integration/employeeServiceCrud.test.ts`
+  - Related test setup/helpers or service files referenced in integration tests
+- **Interface contracts**: PostgREST PGRST116 single-row contract verification, error handling, stateful database integration
+- **Review criteria**: correctness, completeness, stateful DB usage without fake mocks, error handling, PGRST116 compliance, integrity
 
 ## Key Decisions Made
-- Completed inspection of all required files.
-- Executed `npm test` and documented findings.
-- Generated `handoff.md`.
+- Starting investigation and code verification.
 
 ## Artifact Index
-- `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m4_1/ORIGINAL_REQUEST.md` — Original User Request
-- `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m4_1/BRIEFING.md` — Working Briefing
-- `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m4_1/progress.md` — Progress log
-- `c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m4_1/handoff.md` — Final Handoff Report
+- `review.md` — Review report
+- `handoff.md` — Handoff report

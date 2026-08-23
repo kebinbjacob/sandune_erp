@@ -22,7 +22,7 @@ describe('employeeService - Standard Operations', () => {
     };
     const result = await createEmployee(newEmp);
     expect(result).toBeDefined();
-    expect(result.name).toBe('John Doe'); // from mock
+    expect(result.name).toBe('New Employee');
   });
 });
 

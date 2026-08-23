@@ -73,3 +73,13 @@ export async function updateIncidentStatus(id: string, status: string): Promise<
   const { error } = await supabase.from('safety_incidents').update({ status }).eq('id', id);
   if (error) throw error;
 }
+
+export async function updateSiteReport(id: string, updates: Partial<SiteReport>): Promise<void> {
+  const { error } = await supabase.from('site_reports').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateSafetyIncident(id: string, updates: Partial<SafetyIncident>): Promise<void> {
+  const { error } = await supabase.from('safety_incidents').update(updates).eq('id', id);
+  if (error) throw error;
+}

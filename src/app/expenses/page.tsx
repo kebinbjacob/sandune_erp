@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getExpenses, createExpense, updateExpenseStatus, Expense, EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/lib/services/financeService';
+import { getExpenses, createExpense, updateExpense, updateExpenseStatus, Expense, EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/lib/services/financeService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from './expenses.module.css';
@@ -14,7 +14,9 @@ export default function ExpensesPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [form, setForm] = useState({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '', status: 'Pending' });
 
   const load = async () => {
     setLoading(true);
@@ -29,11 +31,31 @@ export default function ExpensesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openModal = (expense?: Expense) => {
+    if (expense) {
+      setEditingId(expense.id || null);
+      setForm({
+        title: expense.title,
+        amount: expense.amount.toString(),
+        category: expense.category,
+        project_id: expense.project_id || '',
+        date: expense.date,
+        submitted_by: expense.submitted_by || '',
+        notes: expense.notes || '',
+        status: expense.status || 'Pending'
+      });
+    } else {
+      setEditingId(null);
+      setForm({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '', status: 'Pending' });
+    }
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createExpense({
+      const payload = {
         title: form.title,
         amount: Number(form.amount),
         category: form.category,
@@ -41,13 +63,18 @@ export default function ExpensesPage() {
         date: form.date,
         submitted_by: form.submitted_by || null,
         notes: form.notes || null,
-        status: 'Pending'
-      });
+        status: form.status
+      };
+      
+      if (editingId) {
+        await updateExpense(editingId, payload);
+      } else {
+        await createExpense(payload);
+      }
       setShowModal(false);
-      setForm({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '' });
       await load();
     } catch (err) {
-      alert('Failed to add expense.');
+      alert('Failed to save expense.');
     } finally {
       setSaving(false);
     }
@@ -75,7 +102,7 @@ export default function ExpensesPage() {
           <h1 className={styles.title}>Expenses</h1>
           <p className={styles.subtitle}>Track overheads, material purchases, and contractor payouts.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className={styles.newBtn}>+ Add Expense</button>
+        <button onClick={() => openModal()} className={styles.newBtn}>+ Add Expense</button>
       </header>
 
       <div className={styles.summaryGrid}>
@@ -120,13 +147,17 @@ export default function ExpensesPage() {
                     </span>
                   </td>
                   <td>
-                    <select 
-                      className={styles.actionSelect} 
-                      value={e.status} 
-                      onChange={(ev) => handleStatusChange(e.id!, ev.target.value)}
-                    >
-                      {EXPENSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select 
+                        className={styles.actionSelect} 
+                        value={e.status} 
+                        onChange={(ev) => handleStatusChange(e.id!, ev.target.value)}
+                        style={{ padding: '4px 8px' }}
+                      >
+                        {EXPENSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <button className={styles.actionSelect} onClick={() => openModal(e)} style={{ padding: '5px 12px' }}>Edit</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -140,7 +171,7 @@ export default function ExpensesPage() {
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>New Expense</h2>
+              <h2 className={styles.modalTitle}>{editingId ? 'Edit Expense' : 'New Expense'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -167,9 +198,16 @@ export default function ExpensesPage() {
                 </div>
               </div>
               <div className={styles.fg}><label className={styles.fl}>Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} className={styles.fi} rows={2} /></div>
+              {editingId && (
+                <div className={styles.fg}><label className={styles.fl}>Status</label>
+                  <select value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))} className={styles.fi}>
+                    {EXPENSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
               <div className={styles.modalFooter}>
                 <button type="button" onClick={() => setShowModal(false)} className={styles.cancelBtn}>Cancel</button>
-                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : 'Add Expense'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Add Expense')}</button>
               </div>
             </form>
           </div>

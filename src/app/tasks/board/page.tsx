@@ -78,12 +78,12 @@ export default function KanbanBoard() {
     try {
       await createTask({
         title: form.title,
-        description: form.description || null,
+        description: form.description || undefined,
         project_id: form.project_id,
-        assigned_to: form.assigned_to || null,
+        assigned_to: form.assigned_to || undefined,
         priority: form.priority,
         status: form.status,
-        due_date: form.due_date || null
+        due_date: form.due_date || undefined
       });
       setShowModal(false);
       setForm({ title: '', description: '', project_id: '', assigned_to: '', priority: 'Medium', status: 'To Do', due_date: '' });

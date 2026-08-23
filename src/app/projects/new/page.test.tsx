@@ -1,20 +1,27 @@
-
 import React from 'react';
 import { render } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
 import Page from './page';
 
 // Mock next/navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams('?type=Test'),
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() })
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
 }));
 
 // Mock Recharts to avoid DOM/SVG issues in JSDOM
-jest.mock('recharts', () => {
+vi.mock('recharts', () => {
   const React = require('react');
   return {
-    ResponsiveContainer: ({ children }) => <div>{children}</div>,
+    ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
     AreaChart: () => <div>AreaChart</div>,
     BarChart: () => <div>BarChart</div>,
     PieChart: () => <div>PieChart</div>,

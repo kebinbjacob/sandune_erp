@@ -350,7 +350,7 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
         <div className={styles.inputArea}>
           <button
             onClick={() => {
-              const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+              const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
               if (!SpeechRecognition) {
                 alert("Voice recognition is not supported in this browser.");
                 return;

@@ -122,8 +122,33 @@ If the user provides multiple details in one message (e.g. "create a High priori
       ],
     });
 
-    let result = await chat.sendMessage(ctx.query);
+    // ─── Pre-flight: Detect task creation intent ────────────────────────────
+    // If the user is clearly asking to CREATE a task (not view or navigate to tasks),
+    // we override the query with an explicit directive so Gemini cannot misfire
+    // and call get_tasks or navigate_to_page.
+    const lowerQuery = ctx.query.toLowerCase().replace(/[*?!]/g, '').trim();
+    const isCreateTaskIntent =
+      /\b(create|add|make|new)\b/.test(lowerQuery) &&
+      /\btask\b/.test(lowerQuery) &&
+      !/\b(show|list|get|view|open|go to|take me|board|where)\b/.test(lowerQuery);
+
+    const finalQuery = isCreateTaskIntent
+      ? `[TASK CREATION MODE - do NOT call get_tasks or navigate_to_page] ${ctx.query}`
+      : ctx.query;
+
+    let result = await chat.sendMessage(finalQuery);
     let functionCall = result.response.functionCalls() && result.response.functionCalls()![0];
+
+    // If in task creation mode but Gemini still tried to call the wrong tool, block it
+    if (isCreateTaskIntent && functionCall && (functionCall.name === 'get_tasks' || functionCall.name === 'navigate_to_page')) {
+      return {
+        id: 'msg_' + Math.random().toString(36).substring(2, 9),
+        sender: 'assistant',
+        text: `Sure, I can create a task for you! Let's go step by step.\n\n**What should be the title of the task?**`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestedPrompts: ['Fix the scaffolding', 'Inspect equipment', 'Review site report'],
+      };
+    }
 
     // Handle Tool Calls
     if (functionCall) {

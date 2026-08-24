@@ -347,18 +347,49 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
 
         {/* Input Area */}
         <div className={styles.inputArea}>
+          <button
+            onClick={() => {
+              const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+              if (!SpeechRecognition) {
+                alert("Voice recognition is not supported in this browser.");
+                return;
+              }
+              const recognition = new SpeechRecognition();
+              recognition.continuous = false;
+              recognition.interimResults = true;
+              recognition.onstart = () => setInputValue("Listening...");
+              recognition.onresult = (e: any) => {
+                const transcript = Array.from(e.results)
+                  .map((r: any) => r[0].transcript)
+                  .join('');
+                setInputValue(transcript);
+              };
+              recognition.onend = () => {
+                // Focus the input to let the user review or send
+                inputRef.current?.focus();
+              };
+              recognition.start();
+            }}
+            className={`${styles.sendSubmitBtn} ${styles.micBtn}`}
+            style={{ background: 'rgba(255, 255, 255, 0.1)' }}
+            aria-label="Use voice input"
+            title="Click to speak"
+          >
+            🎤
+          </button>
+          
           <textarea
             ref={inputRef}
             rows={1}
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about menus, pending approvals, tasks, summaries, or draft an email..."
+            placeholder="Ask about menus, approvals, tasks, or use voice..."
             className={styles.inputField}
           />
           <button
             onClick={() => handleSendMessage()}
-            disabled={!inputValue.trim() || loading}
+            disabled={!inputValue.trim() || inputValue === "Listening..." || loading}
             className={styles.sendSubmitBtn}
             aria-label="Send message"
           >

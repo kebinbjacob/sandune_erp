@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-import { createTestSupabaseClient, testDb } from '@/lib/supabase/testDb';
+import { createTestSupabaseClient, testDb } from './src/lib/supabase/testDb';
 
 // Configure global jest alias for Vitest test execution compatibility
 (globalThis as any).jest = vi;

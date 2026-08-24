@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType, Tool } from '@google/generative-ai';
 import { getEmployees } from '../services/employeeService';
 import { getAllTasks, createTask, updateTaskStatus, TASK_STATUSES, TASK_PRIORITIES } from '../services/taskService';
+import { updateLeaveStatus } from '../services/leaveService';
 import { ChatMessage, ProcessQueryContext } from './aiEngine';
 import { getPendingApprovals, getTasksSummary, summarizeParticularEntity } from './liveDataServices';
 import { composeSmartEmail } from './emailComposer';
@@ -42,8 +43,21 @@ const tools: Tool[] = [
         },
       },
       {
+        name: 'approve_leave',
+        description: 'Approve or Reject an employee leave request. MUST ask for confirmation first.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            request_id: { type: SchemaType.STRING, description: 'ID of the leave request' },
+            status: { type: SchemaType.STRING, description: 'Approved or Rejected' },
+            confirmed: { type: SchemaType.BOOLEAN, description: 'Set to true ONLY if the user has explicitly confirmed they want to execute this.' }
+          },
+          required: ['request_id', 'status', 'confirmed'],
+        },
+      },
+      {
         name: 'get_pending_approvals',
-        description: 'Get pending leave requests and expense claims that require approval.',
+        description: 'Get pending leave requests and expense claims that require approval. Note the IDs so you can approve them.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {},
@@ -137,6 +151,23 @@ export async function runGeminiAgent(ctx: ProcessQueryContext): Promise<ChatMess
               };
               const created = await createTask(taskData);
               functionResponse = { status: 'success', task: created };
+            } catch (e: any) {
+              functionResponse = { error: e.message };
+            }
+          }
+        }
+      }
+      else if (name === 'approve_leave') {
+        const { request_id, status, confirmed } = args as any;
+        if (!confirmed) {
+          functionResponse = { status: 'pending_confirmation', message: `Ask the user if they are sure they want to ${status} this leave request.` };
+        } else {
+          if (ctx.userRole === 'VIEWER' || ctx.userRole === 'ENGINEER') {
+            functionResponse = { error: 'Permission Denied. Only Admins and HR can approve leave requests.' };
+          } else {
+            try {
+              await updateLeaveStatus(request_id, status);
+              functionResponse = { status: 'success', message: `Leave request ${status} successfully.` };
             } catch (e: any) {
               functionResponse = { error: e.message };
             }

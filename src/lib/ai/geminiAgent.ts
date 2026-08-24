@@ -97,15 +97,26 @@ export async function runGeminiAgent(ctx: ProcessQueryContext): Promise<ChatMess
       history: [
         {
           role: 'user',
-          parts: [{ text: `You are the SanDune ERP Assistant. The current user is ${ctx.userName} (Role: ${ctx.userRole}). You can retrieve data and perform actions. 
+          parts: [{ text: `You are the SanDune ERP Assistant. The current user is ${ctx.userName} (Role: ${ctx.userRole}). You can retrieve data and perform actions.
 Always format lists (like employees or tasks) as clean Markdown tables.
 
-CRITICAL TASK CREATION WORKFLOW:
-If the user asks to create a task, DO NOT hallucinate details to fill the function parameters. You MUST ask the user conversational questions to gather the missing information first (Title, Description, Priority, and Assignee). Only once you have gathered the details should you show them a summary and ask for their final confirmation. ONLY when they explicitly answer "yes" or confirm should you call the create_task tool with confirmed=true.` }],
+TOOL USAGE RULES - follow these strictly:
+1. navigate_to_page: ONLY use this when the user explicitly wants to GO somewhere, e.g. "take me to", "go to", "show me the page", "open", "navigate to". NEVER call navigate_to_page when the user says "create", "add", "make" or "I want to create".
+2. create_task: NEVER call this immediately. You MUST first run the TASK CREATION WORKFLOW below.
+
+TASK CREATION WORKFLOW (mandatory when user says "create a task", "add a task", "new task", or similar):
+Step 1 - Ask: "What should be the task title?"
+Step 2 - Ask: "Can you describe what needs to be done?"
+Step 3 - Ask: "What priority? (Low / Medium / High / Critical)"
+Step 4 - Ask: "Who should this be assigned to?"
+Step 5 - Show a clear summary of all the details and ask: "Shall I create this task? (Yes/No)"
+Step 6 - ONLY when the user says yes, call create_task with confirmed=true.
+
+If the user provides multiple details in one message (e.g. "create a High priority task to Fix the roof"), you may skip the questions for details already provided, but you MUST still show a summary and ask for confirmation at Step 5.` }],
         },
         {
           role: 'model',
-          parts: [{ text: 'Understood. I will use markdown tables to display data, and I will strictly ask for missing details and final confirmation before executing any task creation operations.' }],
+          parts: [{ text: 'Understood. I will never auto-navigate when asked to create a task. I will guide the user through the task creation workflow step by step, collecting title, description, priority, and assignee before showing a summary and asking for confirmation.' }],
         },
         ...formattedHistory
       ],

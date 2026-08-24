@@ -123,32 +123,29 @@ If the user provides multiple details in one message (e.g. "create a High priori
     });
 
     // ─── Pre-flight: Detect task creation intent ────────────────────────────
-    // If the user is clearly asking to CREATE a task (not view or navigate to tasks),
-    // we override the query with an explicit directive so Gemini cannot misfire
-    // and call get_tasks or navigate_to_page.
-    const lowerQuery = ctx.query.toLowerCase().replace(/[*?!]/g, '').trim();
+    // Bypass Gemini entirely when user clearly wants to CREATE a task.
+    // This prevents Gemini from misreading intent and showing task list / navigation.
+    const lowerQuery = ctx.query.toLowerCase().replace(/[*?!.,]/g, '').trim();
     const isCreateTaskIntent =
       /\b(create|add|make|new)\b/.test(lowerQuery) &&
       /\btask\b/.test(lowerQuery) &&
-      !/\b(show|list|get|view|open|go to|take me|board|where)\b/.test(lowerQuery);
+      !/\b(show|list|get|view|open|go to|take me|board|where|all|my)\b/.test(lowerQuery);
 
-    const finalQuery = isCreateTaskIntent
-      ? `[TASK CREATION MODE - do NOT call get_tasks or navigate_to_page] ${ctx.query}`
-      : ctx.query;
-
-    let result = await chat.sendMessage(finalQuery);
-    let functionCall = result.response.functionCalls() && result.response.functionCalls()![0];
-
-    // If in task creation mode but Gemini still tried to call the wrong tool, block it
-    if (isCreateTaskIntent && functionCall && (functionCall.name === 'get_tasks' || functionCall.name === 'navigate_to_page')) {
+    if (isCreateTaskIntent) {
+      // Return the first question of the task creation workflow immediately.
+      // The user's next replies will be sent through Gemini normally with history,
+      // where Gemini will collect the remaining details step by step.
       return {
         id: 'msg_' + Math.random().toString(36).substring(2, 9),
         sender: 'assistant',
-        text: `Sure, I can create a task for you! Let's go step by step.\n\n**What should be the title of the task?**`,
+        text: `Sure! Let me help you create a task. I'll ask you a few quick questions.\n\n**Step 1 of 4 — What should be the task title?**`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedPrompts: ['Fix the scaffolding', 'Inspect equipment', 'Review site report'],
+        suggestedPrompts: ['Fix the scaffolding', 'Inspect site equipment', 'Review safety report'],
       };
     }
+
+    let result = await chat.sendMessage(ctx.query);
+    let functionCall = result.response.functionCalls() && result.response.functionCalls()![0];
 
     // Handle Tool Calls
     if (functionCall) {

@@ -28,6 +28,17 @@ export function Navbar() {
       </div>
       
       <div className={styles.actions}>
+        <button
+          className={styles.iconButton}
+          aria-label="Ask AI Assistant"
+          title="Ask AI Assistant (Ctrl+K)"
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+          }}
+          style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+        >
+          ✨
+        </button>
         <button className={styles.iconButton} aria-label="Notifications">
           🔔
           <span className={styles.badge}>3</span>

@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
+import { AIChatWidget } from "./ai/AIChatWidget";
 import { AuthProvider } from "@/lib/context/AuthContext";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <AIChatWidget />
     </AuthProvider>
   );
 }

@@ -1,0 +1,198 @@
+import { GoogleGenerativeAI, FunctionDeclaration, SchemaType, Tool } from '@google/generative-ai';
+import { getEmployees } from '../services/employeeService';
+import { getAllTasks, createTask, updateTaskStatus, TASK_STATUSES, TASK_PRIORITIES } from '../services/taskService';
+import { ChatMessage, ProcessQueryContext } from './aiEngine';
+import { getPendingApprovals, getTasksSummary, summarizeParticularEntity } from './liveDataServices';
+import { composeSmartEmail } from './emailComposer';
+import { SYSTEM_ROUTES } from './knowledgeBase';
+
+const tools: Tool[] = [
+  {
+    functionDeclarations: [
+      {
+        name: 'get_employees',
+        description: 'Get a list of all employees in the company. Includes their name, role, department, and contact info.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: 'get_tasks',
+        description: 'Get all active tasks on the Kanban board.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: 'create_task',
+        description: 'Create a new task on the Kanban board. MUST ask for user confirmation before executing.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: { type: SchemaType.STRING, description: 'Title of the task' },
+            description: { type: SchemaType.STRING, description: 'Detailed description' },
+            priority: { type: SchemaType.STRING, description: 'Priority: Low, Medium, High, or Critical' },
+            project_id: { type: SchemaType.STRING, description: 'ID of the project (use a placeholder if unknown)' },
+            assigned_to: { type: SchemaType.STRING, description: 'Employee name or ID to assign to' },
+            confirmed: { type: SchemaType.BOOLEAN, description: 'Set to true ONLY if the user has explicitly confirmed they want to create this task.' }
+          },
+          required: ['title', 'priority', 'confirmed'],
+        },
+      },
+      {
+        name: 'get_pending_approvals',
+        description: 'Get pending leave requests and expense claims that require approval.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: 'navigate_to_page',
+        description: 'Find the best system page to navigate to based on the users request (e.g. "go to payroll", "where is attendance").',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            page_name: { type: SchemaType.STRING, description: 'Name or description of the page' },
+          },
+          required: ['page_name'],
+        },
+      }
+    ],
+  },
+];
+
+export async function runGeminiAgent(ctx: ProcessQueryContext): Promise<ChatMessage | null> {
+  if (!process.env.GEMINI_API_KEY) return null;
+
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      tools: tools,
+    });
+
+    const chat = model.startChat({
+      history: [
+        {
+          role: 'user',
+          parts: [{ text: `You are the SanDune ERP Assistant. The current user is ${ctx.userName} (Role: ${ctx.userRole}). You can retrieve data and perform actions. Always format lists (like employees or tasks) as clean Markdown tables. If a user asks to create a task, verify the details and ask for confirmation before calling the tool with confirmed=true.` }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Understood. I will use markdown tables to display data and will ask for confirmation before executing any write operations.' }],
+        }
+      ],
+    });
+
+    let result = await chat.sendMessage(ctx.query);
+    let functionCall = result.response.functionCalls() && result.response.functionCalls()![0];
+
+    // Handle Tool Calls
+    if (functionCall) {
+      let functionResponse: any = {};
+      const { name, args } = functionCall;
+
+      if (name === 'get_employees') {
+        const employees = await getEmployees();
+        // RBAC: Hide salary if not admin/HR
+        const safeEmployees = employees.map(e => ({
+          name: e.name,
+          role: e.role,
+          department: e.department,
+          status: e.status,
+          ...(ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'HR_MANAGER' ? { salary: e.salary } : {})
+        }));
+        functionResponse = safeEmployees;
+      } 
+      else if (name === 'get_tasks') {
+        const tasks = await getAllTasks();
+        functionResponse = tasks.map(t => ({
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          assigned_to: t.employees?.name || 'Unassigned',
+          project: t.projects?.name || 'Unknown'
+        }));
+      }
+      else if (name === 'create_task') {
+        const { title, description, priority, project_id, assigned_to, confirmed } = args as any;
+        
+        if (!confirmed) {
+          functionResponse = { status: 'pending_confirmation', message: 'Ask the user if they are sure they want to create this task.' };
+        } else {
+          // Verify Permissions
+          if (ctx.userRole === 'VIEWER') {
+            functionResponse = { error: 'Permission Denied. Viewers cannot create tasks.' };
+          } else {
+            try {
+              const taskData = {
+                title,
+                description,
+                priority: priority || 'Medium',
+                status: 'To Do',
+                project_id: project_id || '00000000-0000-0000-0000-000000000000',
+              };
+              const created = await createTask(taskData);
+              functionResponse = { status: 'success', task: created };
+            } catch (e: any) {
+              functionResponse = { error: e.message };
+            }
+          }
+        }
+      }
+      else if (name === 'get_pending_approvals') {
+        functionResponse = await getPendingApprovals();
+      }
+      else if (name === 'navigate_to_page') {
+        const pageName = (args as any).page_name.toLowerCase();
+        const route = SYSTEM_ROUTES.find(r => r.name.toLowerCase().includes(pageName) || r.keywords.some(k => pageName.includes(k)));
+        if (route) {
+          functionResponse = { found: true, route: route.href, name: route.name, description: route.description };
+        } else {
+          functionResponse = { found: false, message: 'Page not found' };
+        }
+      }
+
+      // Send the result back to Gemini to get the final text response
+      result = await chat.sendMessage([{
+        functionResponse: {
+          name: name,
+          response: functionResponse
+        }
+      }]);
+    }
+
+    const finalResponseText = result.response.text();
+    
+    // Check if the AI wants us to navigate based on its response or prior tool call
+    let actionCard: any = undefined;
+    if (functionCall?.name === 'navigate_to_page' && !finalResponseText.toLowerCase().includes('not found')) {
+      const pageName = (functionCall.args as any).page_name.toLowerCase();
+      const route = SYSTEM_ROUTES.find(r => r.name.toLowerCase().includes(pageName) || r.keywords.some(k => pageName.includes(k)));
+      if (route) {
+        actionCard = {
+          type: 'navigation',
+          title: route.name,
+          route: route.href,
+          routeLabel: `🚀 Open ${route.name}`,
+        };
+      }
+    }
+
+    return {
+      id: 'msg_' + Math.random().toString(36).substring(2, 9),
+      sender: 'assistant',
+      text: finalResponseText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      actionCard,
+      suggestedPrompts: ['Show my tasks', 'List all employees', 'Check pending approvals'],
+    };
+
+  } catch (error) {
+    console.error('Gemini Agent Error:', error);
+    return null;
+  }
+}

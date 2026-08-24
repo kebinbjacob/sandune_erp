@@ -29,6 +29,7 @@ export interface ChatMessage {
 
 export interface ProcessQueryContext {
   query: string;
+  history?: ChatMessage[];
   currentRoute?: string;
   userRole?: string;
   userName?: string;

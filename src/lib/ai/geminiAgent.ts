@@ -88,16 +88,26 @@ export async function runGeminiAgent(ctx: ProcessQueryContext): Promise<ChatMess
       tools: tools,
     });
 
+    const formattedHistory = (ctx.history || []).map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }],
+    }));
+
     const chat = model.startChat({
       history: [
         {
           role: 'user',
-          parts: [{ text: `You are the SanDune ERP Assistant. The current user is ${ctx.userName} (Role: ${ctx.userRole}). You can retrieve data and perform actions. Always format lists (like employees or tasks) as clean Markdown tables. If a user asks to create a task, verify the details and ask for confirmation before calling the tool with confirmed=true.` }],
+          parts: [{ text: `You are the SanDune ERP Assistant. The current user is ${ctx.userName} (Role: ${ctx.userRole}). You can retrieve data and perform actions. 
+Always format lists (like employees or tasks) as clean Markdown tables.
+
+CRITICAL TASK CREATION WORKFLOW:
+If the user asks to create a task, DO NOT hallucinate details to fill the function parameters. You MUST ask the user conversational questions to gather the missing information first (Title, Description, Priority, and Assignee). Only once you have gathered the details should you show them a summary and ask for their final confirmation. ONLY when they explicitly answer "yes" or confirm should you call the create_task tool with confirmed=true.` }],
         },
         {
           role: 'model',
-          parts: [{ text: 'Understood. I will use markdown tables to display data and will ask for confirmation before executing any write operations.' }],
-        }
+          parts: [{ text: 'Understood. I will use markdown tables to display data, and I will strictly ask for missing details and final confirmation before executing any task creation operations.' }],
+        },
+        ...formattedHistory
       ],
     });
 

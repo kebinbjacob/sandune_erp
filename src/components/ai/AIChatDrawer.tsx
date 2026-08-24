@@ -81,6 +81,7 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: query,
+          history: messages,
           currentRoute: pathname,
           userRole: user?.role,
           userName: user?.employees?.name || user?.email?.split('@')[0],

@@ -91,13 +91,10 @@ CREATE POLICY "Allow public and authenticated insert on leave_requests" ON leave
 CREATE POLICY "Allow public and authenticated update on leave_requests" ON leave_requests FOR UPDATE TO public USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public and authenticated delete on leave_requests" ON leave_requests FOR DELETE TO public USING (true);
 
+
 -- ==========================================
--- 4. Seed Data INSERT statements
+-- 4. Seed Data
 -- ==========================================
-INSERT INTO employees (employee_id, name, email, phone, role, department, project, status, salary)
-VALUES 
-  ('EMP-001', 'John Doe', 'john.doe@sandune.com', '+1-555-0101', 'Site Engineer', 'Engineering', 'Skyline Tower', 'Active', 85000),
-  ('EMP-002', 'Sarah Smith', 'sarah.smith@sandune.com', '+1-555-0102', 'Project Manager', 'Management', 'Ocean View Residences', 'Active', 95000),
-  ('EMP-003', 'Mike Johnson', 'mike.johnson@sandune.com', '+1-555-0103', 'Safety Officer', 'Safety', 'Skyline Tower', 'On Leave', 75000),
-  ('EMP-004', 'Emily Chen', 'emily.chen@sandune.com', '+1-555-0104', 'Architect', 'Design', 'Metro Station', 'Active', 90000)
-ON CONFLICT DO NOTHING;
+-- No seed data. All data is managed via the application and admin panel.
+-- Use setup_superadmin.sql to create the initial SUPER_ADMIN account.
+

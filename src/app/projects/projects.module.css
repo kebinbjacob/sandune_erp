@@ -36,9 +36,24 @@
 .cardMeta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .metaItem { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
 
-.cardFooter { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.75rem; }
+.cardFooter { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
 .viewBtn { color: #a5b4fc; font-size: 0.82rem; font-weight: 600; text-decoration: none; transition: color 0.2s; }
 .viewBtn:hover { color: #c7d2fe; }
+
+.deleteBtn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+}
 
 .loading { text-align: center; padding: 3rem; color: rgba(255,255,255,0.35); }
 .empty { grid-column: 1/-1; text-align: center; padding: 3rem; color: rgba(255,255,255,0.35); }

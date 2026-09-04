@@ -6,24 +6,26 @@ export interface AppUser {
   employee_id: string;
   email: string;
   role: string;
+  role_id?: string;
   status: string;
   department?: string;
   password?: string;
   avatar_url?: string;
   last_login?: string;
   created_at?: string;
-  
+  auth_id?: string;
+
   // Joined relation
   employees?: Employee;
 }
 
 export const USER_ROLES = [
-  'Admin',
-  'HR Manager',
-  'HR Ast.',
-  'Project Manager',
-  'Site Engineer',
-  'Project Engineer'
+  'SUPER_ADMIN',
+  'ADMIN',
+  'HR_MANAGER',
+  'PROJECT_MANAGER',
+  'ENGINEER',
+  'VIEWER',
 ];
 
 export async function getUsers(): Promise<AppUser[]> {
@@ -58,9 +60,14 @@ export async function createUser(userData: any): Promise<any> {
   return json.user;
 }
 
-export async function updateUser(id: string, updates: Partial<AppUser>): Promise<void> {
-  const { error } = await supabase.from('app_users').update(updates).eq('id', id);
-  if (error) throw error;
+export async function updateUser(id: string, updates: Record<string, any>): Promise<void> {
+  const res = await fetch('/api/admin/users', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_user_id: id, ...updates }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update user');
 }
 
 export async function updateUserStatus(id: string, status: string): Promise<void> {
@@ -83,7 +90,12 @@ export async function getUserById(id: string): Promise<AppUser | null> {
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  const { error } = await supabase.from('app_users').delete().eq('id', id);
-  if (error) throw error;
+  const res = await fetch('/api/admin/users', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_user_id: id }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to delete user');
 }
 

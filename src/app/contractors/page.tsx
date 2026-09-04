@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getContractors, createContractor, updateContractor, Contractor } from '@/lib/services/crmService';
+import { getContractors, createContractor, updateContractor, deleteContractor, Contractor } from '@/lib/services/crmService';
 import styles from '../expenses/expenses.module.css';
 
 export default function ContractorsPage() {
@@ -19,6 +19,16 @@ export default function ContractorsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete contractor "${name}"?`)) return;
+    try {
+      await deleteContractor(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete contractor');
+    }
+  };
 
   const openModal = (contractor?: Contractor) => {
     if (contractor) {
@@ -54,6 +64,23 @@ export default function ContractorsPage() {
     finally { setSaving(false); }
   };
 
+  // R13 Search & Filter
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const filteredContractors = contractors.filter(c => {
+    if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchSpec = c.specialization?.toLowerCase().includes(q);
+      const matchContact = c.contact_person?.toLowerCase().includes(q);
+      const matchEmail = c.email?.toLowerCase().includes(q);
+      if (!matchName && !matchSpec && !matchContact && !matchEmail) return false;
+    }
+    return true;
+  });
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -64,6 +91,37 @@ export default function ContractorsPage() {
         <button onClick={() => openModal()} className={styles.newBtn}>+ Add Contractor</button>
       </header>
 
+      {/* R13: Search & Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search contractors by name, specialization, contact..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className={styles.fi}
+          style={{ flex: 1, minWidth: '220px' }}
+        />
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className={styles.fi}
+          style={{ width: 'auto', minWidth: '140px' }}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        {(search || statusFilter !== 'All') && (
+          <button
+            onClick={() => { setSearch(''); setStatusFilter('All'); }}
+            className={styles.cancelBtn}
+            style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading contractors...</div> : (
           <table className={styles.table}>
@@ -71,7 +129,7 @@ export default function ContractorsPage() {
               <tr><th>Name / Specialization</th><th>Primary Contact</th><th>Email</th><th>Phone</th><th>Rating</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {contractors.map(c => (
+              {filteredContractors.map(c => (
                 <tr key={c.id}>
                   <td>
                     <div className={styles.boldCell}>{c.name}</div>
@@ -81,7 +139,12 @@ export default function ContractorsPage() {
                   <td className={styles.subCell}>{c.email || '—'}</td>
                   <td className={styles.subCell}>{c.phone || '—'}</td>
                   <td style={{ color: '#f59e0b' }}>{'★'.repeat(c.rating || 0)}{'☆'.repeat(5 - (c.rating || 0))}</td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(c)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(c)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(c.id!, c.name)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {contractors.length === 0 && <tr><td colSpan={6} className={styles.loading}>No contractors found.</td></tr>}

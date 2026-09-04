@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMaterials, createMaterial, updateMaterial, Material } from '@/lib/services/resourceService';
+import { getMaterials, createMaterial, updateMaterial, deleteMaterial, Material } from '@/lib/services/resourceService';
 import styles from '../expenses/expenses.module.css';
 
 export default function MaterialsPage() {
@@ -19,6 +19,16 @@ export default function MaterialsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete material "${name}"?`)) return;
+    try {
+      await deleteMaterial(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete material');
+    }
+  };
 
   const openModal = (material?: Material) => {
     if (material) {
@@ -55,6 +65,24 @@ export default function MaterialsPage() {
     finally { setSaving(false); }
   };
 
+  // R13 Search & Stock Status Filter
+  const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('All');
+
+  const filteredMaterials = materials.filter(m => {
+    const isLow = m.current_stock <= m.reorder_level;
+    if (stockFilter === 'Low Stock' && !isLow) return false;
+    if (stockFilter === 'Healthy' && isLow) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const matchName = m.item_name.toLowerCase().includes(q);
+      const matchCategory = m.category.toLowerCase().includes(q);
+      const matchLoc = m.location?.toLowerCase().includes(q);
+      if (!matchName && !matchCategory && !matchLoc) return false;
+    }
+    return true;
+  });
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -65,6 +93,37 @@ export default function MaterialsPage() {
         <button onClick={() => openModal()} className={styles.newBtn}>+ Add Material</button>
       </header>
 
+      {/* R13: Search & Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search materials by item name, category, or location..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className={styles.fi}
+          style={{ flex: 1, minWidth: '220px' }}
+        />
+        <select
+          value={stockFilter}
+          onChange={e => setStockFilter(e.target.value)}
+          className={styles.fi}
+          style={{ width: 'auto', minWidth: '150px' }}
+        >
+          <option value="All">All Stock Levels</option>
+          <option value="Healthy">Healthy Stock</option>
+          <option value="Low Stock">Low Stock</option>
+        </select>
+        {(search || stockFilter !== 'All') && (
+          <button
+            onClick={() => { setSearch(''); setStockFilter('All'); }}
+            className={styles.cancelBtn}
+            style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading inventory...</div> : (
           <table className={styles.table}>
@@ -72,7 +131,7 @@ export default function MaterialsPage() {
               <tr><th>Item Name</th><th>Category</th><th>Stock Level</th><th>Reorder Level</th><th>Location</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {materials.map(m => {
+              {filteredMaterials.map(m => {
                 const isLow = m.current_stock <= m.reorder_level;
                 return (
                   <tr key={m.id}>
@@ -86,7 +145,12 @@ export default function MaterialsPage() {
                         {isLow ? 'Low Stock' : 'Healthy'}
                       </span>
                     </td>
-                    <td><button className={styles.actionSelect} onClick={() => openModal(m)}>Edit</button></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button className={styles.actionSelect} onClick={() => openModal(m)}>Edit</button>
+                        <button className={styles.deleteBtn} onClick={() => handleDelete(m.id!, m.item_name)}>Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

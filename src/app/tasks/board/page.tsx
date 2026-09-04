@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllTasks, createTask, updateTaskStatus, Task, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/services/taskService';
+import { getAllTasks, createTask, updateTask, updateTaskStatus, deleteTask, Task, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/services/taskService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from './board.module.css';
@@ -15,6 +15,7 @@ export default function KanbanBoard() {
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', project_id: '', assigned_to: '', priority: 'Medium', status: 'To Do', due_date: ''
@@ -32,6 +33,36 @@ export default function KanbanBoard() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const openNewModal = () => {
+    setEditingTaskId(null);
+    setForm({ title: '', description: '', project_id: '', assigned_to: '', priority: 'Medium', status: 'To Do', due_date: '' });
+    setShowModal(true);
+  };
+
+  const openEditModal = (task: Task) => {
+    setEditingTaskId(task.id || null);
+    setForm({
+      title: task.title,
+      description: task.description || '',
+      project_id: task.project_id || '',
+      assigned_to: task.assigned_to || '',
+      priority: task.priority || 'Medium',
+      status: task.status || 'To Do',
+      due_date: task.due_date || ''
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to delete task "${title}"?`)) return;
+    try {
+      await deleteTask(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete task');
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedTaskId(id);
@@ -76,20 +107,29 @@ export default function KanbanBoard() {
     e.preventDefault();
     setSaving(true);
     try {
-      await createTask({
+      const payload = {
         title: form.title,
         description: form.description || undefined,
         project_id: form.project_id,
-        assigned_to: form.assigned_to || undefined,
+        assigned_to: form.assigned_to || null,
         priority: form.priority,
         status: form.status,
-        due_date: form.due_date || undefined
-      });
+        due_date: form.due_date || null
+      };
+
+      if (editingTaskId) {
+        await updateTask(editingTaskId, payload);
+      } else {
+        await createTask({
+          ...payload,
+          assigned_to: form.assigned_to || undefined,
+          due_date: form.due_date || undefined
+        });
+      }
       setShowModal(false);
-      setForm({ title: '', description: '', project_id: '', assigned_to: '', priority: 'Medium', status: 'To Do', due_date: '' });
       await load();
     } catch (err) {
-      alert('Failed to create task.');
+      alert(editingTaskId ? 'Failed to update task.' : 'Failed to create task.');
     } finally {
       setSaving(false);
     }
@@ -106,7 +146,7 @@ export default function KanbanBoard() {
           <h1 className={styles.title}>Kanban Board</h1>
           <p className={styles.subtitle}>Drag and drop tasks to manage progress</p>
         </div>
-        <button className={styles.newBtn} onClick={() => setShowModal(true)}>+ New Task</button>
+        <button className={styles.newBtn} onClick={openNewModal}>+ New Task</button>
       </header>
 
       {loading ? <div className={styles.loading}>Loading board...</div> : (
@@ -134,12 +174,31 @@ export default function KanbanBoard() {
                       draggable
                       onDragStart={(e) => handleDragStart(e, task.id!)}
                       onDragEnd={(e) => handleDragEnd(e, task.id!)}
+                      onClick={() => openEditModal(task)}
+                      style={{ cursor: 'pointer' }}
                     >
                       <div className={styles.taskTags}>
                         <span className={styles.priorityTag} style={{ background: `${priorityColors[task.priority]}22`, color: priorityColors[task.priority] }}>
                           {task.priority}
                         </span>
                         <span className={styles.projectTag}>{task.projects?.name || 'No Project'}</span>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+                          <button
+                            className={styles.deleteTaskBtn}
+                            onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                            title="Edit task"
+                            style={{ color: '#818cf8' }}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className={styles.deleteTaskBtn}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(task.id!, task.title); }}
+                            title="Delete task"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                       
                       <h4 className={styles.taskTitle}>{task.title}</h4>
@@ -171,12 +230,12 @@ export default function KanbanBoard() {
         </div>
       )}
 
-      {/* Create Task Modal */}
+      {/* Task Modal (Create / Edit) */}
       {showModal && (
         <div className={styles.overlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>New Task</h2>
+              <h2 className={styles.modalTitle}>{editingTaskId ? 'Edit Task' : 'New Task'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
@@ -209,7 +268,7 @@ export default function KanbanBoard() {
               <div className={styles.fg}><label className={styles.fl}>Description</label><textarea value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} className={styles.fi} rows={3} placeholder="Task details..." style={{ resize: 'vertical' }} /></div>
               <div className={styles.modalFooter}>
                 <button type="button" onClick={() => setShowModal(false)} className={styles.cancelBtn}>Cancel</button>
-                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : '+ Create Task'}</button>
+                <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingTaskId ? 'Save Changes' : '+ Create Task')}</button>
               </div>
             </form>
           </div>

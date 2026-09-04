@@ -8,6 +8,7 @@ import {
   EntitySummary,
 } from './liveDataServices';
 import { composeSmartEmail, DraftEmail } from './emailComposer';
+import { runGeminiAgent } from './geminiAgent';
 
 export interface ChatMessage {
   id: string;
@@ -34,6 +35,7 @@ export interface ProcessQueryContext {
   userRole?: string;
   userName?: string;
   userEmail?: string;
+  useGemini?: boolean;
 }
 
 /**
@@ -43,6 +45,12 @@ export async function processAIQuery(ctx: ProcessQueryContext): Promise<ChatMess
   const query = ctx.query.trim().toLowerCase();
   const role = ctx.userRole || 'VIEWER';
   const name = ctx.userName || 'there';
+
+  // 0. Force Gemini API if user requested it explicitly
+  if (ctx.useGemini && process.env.GEMINI_API_KEY) {
+    const agentResponse = await runGeminiAgent(ctx);
+    if (agentResponse) return agentResponse;
+  }
 
   // 1. Check for Pending Approvals Intent
   if (
@@ -259,7 +267,6 @@ export async function processAIQuery(ctx: ProcessQueryContext): Promise<ChatMess
 
   // 8. General Help / Default Greeting (or Gemini API Agent Fallback)
   if (process.env.GEMINI_API_KEY) {
-    const { runGeminiAgent } = require('./geminiAgent');
     const agentResponse = await runGeminiAgent(ctx);
     if (agentResponse) return agentResponse;
   }

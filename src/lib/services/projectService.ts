@@ -97,3 +97,13 @@ export async function updateTaskStatus(id: string, status: string): Promise<void
   const { error } = await supabase.from('tasks').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase.from('projects').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) throw error;
+}

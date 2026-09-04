@@ -66,3 +66,11 @@ export async function getEmployees() {
   }
   return data || [];
 }
+
+export async function deleteLeaveRequest(id: string): Promise<void> {
+  const { error } = await supabase.from('leave_requests').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting leave request:', error);
+    throw error;
+  }
+}

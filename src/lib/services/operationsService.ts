@@ -83,3 +83,13 @@ export async function updateSafetyIncident(id: string, updates: Partial<SafetyIn
   const { error } = await supabase.from('safety_incidents').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteSiteReport(id: string): Promise<void> {
+  const { error } = await supabase.from('site_reports').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteSafetyIncident(id: string): Promise<void> {
+  const { error } = await supabase.from('safety_incidents').delete().eq('id', id);
+  if (error) throw error;
+}

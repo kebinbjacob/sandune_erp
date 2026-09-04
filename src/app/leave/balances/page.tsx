@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getLeaveBalances, createLeaveBalance, updateLeaveBalance, LeaveBalance } from '@/lib/services/leaveBalancesService';
+import { getLeaveBalances, createLeaveBalance, updateLeaveBalance, deleteLeaveBalance, LeaveBalance } from '@/lib/services/leaveBalancesService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from '../../expenses/expenses.module.css';
 
@@ -28,6 +28,16 @@ export default function LeaveBalancesPage() {
   };
 
   useEffect(() => { load(); }, [year]);
+
+  const handleDelete = async (id: string, empName?: string) => {
+    if (!window.confirm(`Are you sure you want to delete leave balance for ${empName || 'this employee'}?`)) return;
+    try {
+      await deleteLeaveBalance(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete leave balance.');
+    }
+  };
 
   const openModal = (balance?: LeaveBalance) => {
     if (balance) {
@@ -113,7 +123,12 @@ export default function LeaveBalancesPage() {
                       {b.casual_used} / {b.casual_total}
                     </span>
                   </td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(b)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(b)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(b.id!, b.employees?.name)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {balances.length === 0 && <tr><td colSpan={5} className={styles.loading}>No balances allocated for {year}.</td></tr>}

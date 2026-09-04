@@ -84,3 +84,18 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
   const { error } = await supabase.from('vendors').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteClient(id: string): Promise<void> {
+  const { error } = await supabase.from('clients').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteContractor(id: string): Promise<void> {
+  const { error } = await supabase.from('contractors').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteVendor(id: string): Promise<void> {
+  const { error } = await supabase.from('vendors').delete().eq('id', id);
+  if (error) throw error;
+}

@@ -12,11 +12,16 @@ import {
   AttendanceStatus,
   AuditLogEntry,
 } from '@/lib/services/attendanceService';
+import { useAuth } from '@/lib/context/AuthContext';
+import { exportToCSV } from '@/lib/utils/csvExport';
 import styles from './daily.module.css';
 
 const today = new Date().toISOString().split('T')[0];
 
 export default function DailyAttendancePage() {
+  const { user } = useAuth();
+  const markedByName = user?.employees?.name || user?.email || 'System';
+
   const [date, setDate] = useState(today);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [filtered, setFiltered] = useState<AttendanceRecord[]>([]);
@@ -25,6 +30,38 @@ export default function DailyAttendancePage() {
   const [deptFilter, setDeptFilter] = useState('All');
   const [projectFilter, setProjectFilter] = useState('All');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const handleExportCSV = () => {
+    const headers = [
+      'Employee Name',
+      'Designation',
+      'Department',
+      'Project',
+      'Date',
+      'Status',
+      'Check In',
+      'Check Out',
+      'Marked By',
+      'Notes / Reason',
+      'Remarks'
+    ];
+
+    const rows = filtered.map(r => [
+      r.employees?.name || '',
+      r.employees?.role || '',
+      r.employees?.department || '',
+      r.employees?.project || '',
+      r.date,
+      r.status || 'Not Marked',
+      r.check_in || '',
+      r.check_out || '',
+      r.marked_by || '',
+      r.notes || '',
+      r.remarks || ''
+    ]);
+
+    exportToCSV(`Attendance_${date}`, headers, rows);
+  };
 
   // Mark modal state
   const [markModal, setMarkModal] = useState<{ record: AttendanceRecord } | null>(null);
@@ -80,7 +117,7 @@ export default function DailyAttendancePage() {
     if (!markModal) return;
     setMarkSaving(true);
     try {
-      await markAttendance(markModal.record.employee_id, date, markStatus, markReason, markRemarks, markModal.record);
+      await markAttendance(markModal.record.employee_id, date, markStatus, markReason, markRemarks, markModal.record, markedByName);
       setMarkModal(null);
       await fetchData();
     } catch (e) {
@@ -99,7 +136,7 @@ export default function DailyAttendancePage() {
   const handleBulkMark = async () => {
     setBulkSaving(true);
     try {
-      await bulkMarkAttendance(Array.from(selected), date, bulkStatus);
+      await bulkMarkAttendance(Array.from(selected), date, bulkStatus, markedByName);
       setBulkModal(false);
       setSelected(new Set());
       await fetchData();
@@ -107,6 +144,27 @@ export default function DailyAttendancePage() {
       console.error(e);
     } finally {
       setBulkSaving(false);
+    }
+  };
+
+  const handleAutoCloseDay = async () => {
+    const unmarked = records.filter(r => !r.status).map(r => r.employee_id);
+    if (unmarked.length === 0) {
+      alert('All employees are already marked for this date.');
+      return;
+    }
+    if (!window.confirm(`Auto-mark ${unmarked.length} unmarked employee(s) as Absent for ${formatDate(date)}?`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await bulkMarkAttendance(unmarked, date, 'Absent', markedByName);
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to auto-close day.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,8 +203,48 @@ export default function DailyAttendancePage() {
             onChange={e => setDate(e.target.value)}
             className={styles.dateInput}
           />
+          <button
+            onClick={handleExportCSV}
+            style={{
+              background: '#059669',
+              border: '1px solid #10b981',
+              color: '#fff',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            📥 Export CSV
+          </button>
+          {date <= today && (
+            <button
+              onClick={handleAutoCloseDay}
+              style={{
+                background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                border: 'none',
+                color: '#fff',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              🌙 Auto-close Day
+            </button>
+          )}
         </div>
       </header>
+
 
       {/* Summary strip */}
       <div className={styles.summaryStrip}>

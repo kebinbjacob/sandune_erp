@@ -1,15 +1,38 @@
-# Progress Tracker - worker_m2_1
+# Progress - Milestone 2
 
-Last visited: 2026-08-08T14:48:30Z
+Last visited: 2026-08-29T13:10:00Z
+Status: Completed
 
-- [x] Initialized workspace metadata files (ORIGINAL_REQUEST.md, BRIEFING.md, progress.md)
-- [x] Inspect existing project structure, .env.local, package.json, and current components
-- [x] Create `supabase/schema.sql` with employees, attendance, leave_requests, RLS, policies, seed data
-- [x] Installed `@supabase/supabase-js` package (`npm install @supabase/supabase-js`)
-- [x] Created `@/lib/supabase/client.ts` (`src/lib/supabase/client.ts`) exporting initialized Supabase client
-- [x] Created `@/lib/services/employeeService.ts` (`src/lib/services/employeeService.ts`) providing `getEmployees()` and `createEmployee()`
-- [x] Updated `/employees` page (`src/app/employees/page.tsx`) to fetch and render live employee records from Supabase while maintaining CSS styling, status badges, buttons, and layout
-- [x] Updated Add Employee form (`src/app/create/page.tsx` & `src/app/employees/new/page.tsx`) to collect Name, Role, Department, Project, Email, Phone, Status, insert to Supabase, handle errors/success, and route to `/employees`
-- [x] Updated `jest.setup.js` with default environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) and global Supabase mock client
-- [x] Added unit tests for `employeeService` (`src/lib/services/__tests__/employeeService.test.ts`)
-- [x] Created handoff report (`handoff.md`) in agent working directory
+## Steps:
+- [x] 1. Read Survey Report, ORIGINAL_REQUEST, and PROJECT.md
+- [x] 2. Implement R4 (Part 1): Add missing delete functions to 9 service files in `src/lib/services/`
+  - resourceService.ts (deleteMaterial, deleteEquipment, deletePurchaseOrder)
+  - crmService.ts (deleteClient, deleteContractor, deleteVendor)
+  - financeService.ts (deleteExpense)
+  - shiftService.ts (deleteShift, deleteEmployeeShift)
+  - projectService.ts (deleteProject, deleteTask)
+  - taskService.ts (deleteTask)
+  - operationsService.ts (deleteSiteReport, deleteSafetyIncident)
+  - leaveService.ts (deleteLeaveRequest)
+  - leaveBalancesService.ts (deleteLeaveBalance)
+- [x] 3. Implement R4 (Part 2): Add Delete buttons + `window.confirm()` + reload to 14 pages (16 files)
+  - `/materials` (`src/app/materials/page.tsx`)
+  - `/equipment` (`src/app/equipment/page.tsx`)
+  - `/procurement` (`src/app/procurement/page.tsx`)
+  - `/clients` (`src/app/clients/page.tsx`)
+  - `/contractors` (`src/app/contractors/page.tsx`)
+  - `/vendors` (`src/app/vendors/page.tsx`)
+  - `/expenses` (`src/app/expenses/page.tsx`)
+  - `/shifts` (`src/app/shifts/page.tsx`)
+  - `/projects` (`src/app/projects/page.tsx`) & `/projects/[id]` (`src/app/projects/[id]/page.tsx`)
+  - `/tasks` (`src/app/tasks/page.tsx`) & `/tasks/board` (`src/app/tasks/board/page.tsx`)
+  - `/reports/site` (`src/app/reports/site/page.tsx`)
+  - `/safety` (`src/app/safety/page.tsx`)
+  - `/leave` (`src/app/leave/page.tsx`)
+  - `/leave/balances` (`src/app/leave/balances/page.tsx`)
+- [x] 4. Implement R5: `marked_by` / `generated_by` User Context Audit in services and pages
+  - `attendanceService.ts` (`markAttendance`, `bulkMarkAttendance`) + `attendance/page.tsx`
+  - `payrollService.ts` (`savePayrollRun`) + `payroll/page.tsx`
+  - `safety/page.tsx` (audit context)
+- [x] 5. Run build / typecheck verification (`npm run build` exited with code 0, all 38 routes static/dynamic generated)
+- [x] 6. Create handoff.md and send completion message to parent

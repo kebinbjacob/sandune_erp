@@ -23,31 +23,7 @@ CREATE POLICY "Allow public insert on app_users" ON app_users FOR INSERT TO publ
 CREATE POLICY "Allow public update on app_users" ON app_users FOR UPDATE TO public USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public delete on app_users" ON app_users FOR DELETE TO public USING (true);
 
--- Insert dummy data (link to existing employees)
--- We'll just link the first 3 employees as examples
-DO $$
-DECLARE
-  emp1 uuid;
-  emp2 uuid;
-  emp3 uuid;
-  email1 text;
-  email2 text;
-  email3 text;
-BEGIN
-  -- Grab some employees
-  SELECT id, email INTO emp1, email1 FROM employees ORDER BY created_at ASC LIMIT 1;
-  SELECT id, email INTO emp2, email2 FROM employees ORDER BY created_at ASC OFFSET 1 LIMIT 1;
-  SELECT id, email INTO emp3, email3 FROM employees ORDER BY created_at ASC OFFSET 2 LIMIT 1;
 
-  IF emp1 IS NOT NULL THEN
-    INSERT INTO app_users (employee_id, email, role, status) VALUES (emp1, email1, 'Admin', 'Active') ON CONFLICT DO NOTHING;
-  END IF;
+-- No seed data. Use setup_superadmin.sql to create the initial SUPER_ADMIN account.
+-- All other users are created via the /settings/users admin panel.
 
-  IF emp2 IS NOT NULL THEN
-    INSERT INTO app_users (employee_id, email, role, status) VALUES (emp2, email2, 'Project Manager', 'Active') ON CONFLICT DO NOTHING;
-  END IF;
-
-  IF emp3 IS NOT NULL THEN
-    INSERT INTO app_users (employee_id, email, role, status) VALUES (emp3, email3, 'HR Manager', 'Active') ON CONFLICT DO NOTHING;
-  END IF;
-END $$;

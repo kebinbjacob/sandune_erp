@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getShifts, createShift, updateShift, getEmployeeShifts, assignShift, updateEmployeeShift, Shift, EmployeeShift } from '@/lib/services/shiftService';
+import { getShifts, createShift, updateShift, deleteShift, getEmployeeShifts, assignShift, updateEmployeeShift, deleteEmployeeShift, Shift, EmployeeShift } from '@/lib/services/shiftService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from '../expenses/expenses.module.css';
 
@@ -32,6 +32,27 @@ export default function ShiftsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDeleteAssignment = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this shift assignment?')) return;
+    try {
+      await deleteEmployeeShift(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete shift assignment');
+    }
+  };
+
+  const handleDeleteShift = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete shift "${name}"?`)) return;
+    try {
+      await deleteShift(id);
+      setShowShiftModal(false);
+      await load();
+    } catch (err) {
+      alert('Failed to delete shift');
+    }
+  };
 
   const openShiftModal = (shift?: Shift) => {
     if (shift) {
@@ -143,7 +164,12 @@ export default function ShiftsPage() {
                         {isPast ? 'Active' : 'Upcoming'}
                       </span>
                     </td>
-                    <td><button className={styles.actionSelect} onClick={() => openAssignModal(a)}>Edit</button></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button className={styles.actionSelect} onClick={() => openAssignModal(a)}>Edit</button>
+                        <button className={styles.deleteBtn} onClick={() => handleDeleteAssignment(a.id!)}>Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -166,7 +192,10 @@ export default function ShiftsPage() {
                 <div className={styles.fg}><label className={styles.fl}>Start Time</label><input required type="time" value={shiftForm.start_time} onChange={e => setShiftForm(f => ({...f, start_time: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>End Time</label><input required type="time" value={shiftForm.end_time} onChange={e => setShiftForm(f => ({...f, end_time: e.target.value}))} className={styles.fi} /></div>
               </div>
-              <div className={styles.modalFooter}>
+              <div className={styles.modalFooter} style={{ display: 'flex', justifyContent: editingShiftId ? 'space-between' : 'flex-end', alignItems: 'center' }}>
+                {editingShiftId && (
+                  <button type="button" className={styles.deleteBtn} onClick={() => handleDeleteShift(editingShiftId, shiftForm.name)}>Delete Shift</button>
+                )}
                 <button type="submit" className={styles.submitBtn}>{editingShiftId ? 'Save Changes' : 'Save Shift'}</button>
               </div>
             </form>

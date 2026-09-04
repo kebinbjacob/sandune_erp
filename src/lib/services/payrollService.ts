@@ -14,6 +14,9 @@ export interface PayrollRun {
   gross_salary: number;
   absent_deduction: number;
   half_day_deduction: number;
+  pf_deduction?: number;
+  esi_deduction?: number;
+  tax_deduction?: number;
   net_salary: number;
   status: string;
   remarks?: string;
@@ -38,6 +41,10 @@ export interface EmployeePayrollSummary {
   daily_rate: number;
   absent_deduction: number;
   half_day_deduction: number;
+  pf_deduction: number;
+  esi_deduction: number;
+  tax_deduction: number;
+  total_deductions: number;
   net_salary: number;
   existing_run?: PayrollRun | null;
 }
@@ -49,7 +56,17 @@ const LEAVE_STATUSES = ['Leave'];
 const HALF_DAY_STATUSES = ['Half Day'];
 const ABSENT_STATUSES = ['Absent'];
 
-export async function computePayroll(month: number, year: number): Promise<EmployeePayrollSummary[]> {
+export interface PayrollConfig {
+  pfPct?: number;   // default 12%
+  esiPct?: number;  // default 1.75%
+  taxPct?: number;  // default 0% or bracket
+}
+
+export async function computePayroll(
+  month: number,
+  year: number,
+  config?: PayrollConfig
+): Promise<EmployeePayrollSummary[]> {
   // Fetch all active employees with salary
   const { data: employees, error: empErr } = await supabase
     .from('employees')
@@ -85,6 +102,10 @@ export async function computePayroll(month: number, year: number): Promise<Emplo
     attMap.get(rec.employee_id)!.push(rec.status);
   }
 
+  const pfRate = (config?.pfPct !== undefined ? config.pfPct : 12) / 100;
+  const esiRate = (config?.esiPct !== undefined ? config.esiPct : 1.75) / 100;
+  const taxRate = config?.taxPct !== undefined ? config.taxPct / 100 : null;
+
   return (employees || []).map(emp => {
     const statuses = attMap.get(emp.id) || [];
     const present = statuses.filter(s => PRESENT_STATUSES.includes(s)).length;
@@ -96,9 +117,24 @@ export async function computePayroll(month: number, year: number): Promise<Emplo
 
     const monthlySalary = emp.salary || 0;
     const dailyRate = monthlySalary / WORKING_DAYS_PER_MONTH;
-    const absentDeduction = absent * dailyRate;
-    const halfDayDeduction = halfDay * (dailyRate / 2);
-    const netSalary = Math.max(0, monthlySalary - absentDeduction - halfDayDeduction);
+    const absentDeduction = Math.round(absent * dailyRate);
+    const halfDayDeduction = Math.round(halfDay * (dailyRate / 2));
+
+    // R21: Statutory Deductions
+    // PF: 12% of gross salary
+    const pfDeduction = monthlySalary > 0 ? Math.round(monthlySalary * pfRate) : 0;
+    // ESI: 1.75% only if gross salary <= 21,000 threshold
+    const esiDeduction = (monthlySalary > 0 && monthlySalary <= 21000) ? Math.round(monthlySalary * esiRate) : 0;
+    // Tax: Flat rate or bracket (5% if salary > 50,000)
+    let taxDeduction = 0;
+    if (taxRate !== null) {
+      taxDeduction = Math.round(monthlySalary * taxRate);
+    } else if (monthlySalary > 50000) {
+      taxDeduction = Math.round(monthlySalary * 0.05);
+    }
+
+    const totalDeductions = absentDeduction + halfDayDeduction + pfDeduction + esiDeduction + taxDeduction;
+    const netSalary = Math.max(0, monthlySalary - totalDeductions);
 
     return {
       employee_id: emp.id,
@@ -116,13 +152,22 @@ export async function computePayroll(month: number, year: number): Promise<Emplo
       daily_rate: dailyRate,
       absent_deduction: absentDeduction,
       half_day_deduction: halfDayDeduction,
+      pf_deduction: pfDeduction,
+      esi_deduction: esiDeduction,
+      tax_deduction: taxDeduction,
+      total_deductions: totalDeductions,
       net_salary: netSalary,
       existing_run: runsMap.get(emp.id) || null,
     };
   });
 }
 
-export async function savePayrollRun(summary: EmployeePayrollSummary, month: number, year: number): Promise<void> {
+export async function savePayrollRun(
+  summary: EmployeePayrollSummary,
+  month: number,
+  year: number,
+  generatedBy: string = 'System'
+): Promise<void> {
   const payload = {
     employee_id: summary.employee_id,
     period_month: month,
@@ -136,9 +181,12 @@ export async function savePayrollRun(summary: EmployeePayrollSummary, month: num
     gross_salary: summary.salary,
     absent_deduction: summary.absent_deduction,
     half_day_deduction: summary.half_day_deduction,
+    pf_deduction: summary.pf_deduction,
+    esi_deduction: summary.esi_deduction,
+    tax_deduction: summary.tax_deduction,
     net_salary: summary.net_salary,
     status: 'Generated',
-    generated_by: 'Admin',
+    generated_by: generatedBy,
   };
 
   const { error } = await supabase
@@ -158,18 +206,33 @@ export async function getPayrollHistory(employeeId: string): Promise<PayrollRun[
   return data || [];
 }
 
-export async function getAllPayrollRuns(month: number, year: number): Promise<PayrollRun[]> {
-  const { data, error } = await supabase
+export async function getAllPayrollRuns(month?: number, year?: number): Promise<PayrollRun[]> {
+  let query = supabase
     .from('payroll_runs')
     .select('*, employees(name, role, department, salary)')
-    .eq('period_month', month)
-    .eq('period_year', year)
+    .order('period_year', { ascending: false })
+    .order('period_month', { ascending: false })
     .order('generated_at', { ascending: false });
+
+  if (month !== undefined) {
+    query = query.eq('period_month', month);
+  }
+  if (year !== undefined) {
+    query = query.eq('period_year', year);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
+}
+
+export async function deletePayrollRun(id: string): Promise<void> {
+  const { error } = await supabase.from('payroll_runs').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export const MONTHS = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December'
 ];
+

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSafetyIncidents, createSafetyIncident, updateSafetyIncident, updateIncidentStatus, SafetyIncident, INCIDENT_SEVERITY, INCIDENT_STATUSES } from '@/lib/services/operationsService';
+import { getSafetyIncidents, createSafetyIncident, updateSafetyIncident, updateIncidentStatus, deleteSafetyIncident, SafetyIncident, INCIDENT_SEVERITY, INCIDENT_STATUSES } from '@/lib/services/operationsService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
+import { useAuth } from '@/lib/context/AuthContext';
 import styles from '../expenses/expenses.module.css';
 
 export default function SafetyPage() {
+  const { user } = useAuth();
   const [incidents, setIncidents] = useState<SafetyIncident[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -30,6 +32,16 @@ export default function SafetyPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this safety incident?')) return;
+    try {
+      await deleteSafetyIncident(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete incident.');
+    }
+  };
 
   const openModal = (incident?: SafetyIncident) => {
     if (incident) {
@@ -57,7 +69,7 @@ export default function SafetyPage() {
       const payload = {
         project_id: form.project_id,
         incident_date: form.incident_date,
-        reported_by: form.reported_by || null,
+        reported_by: form.reported_by || user?.employees?.id || null,
         severity: form.severity,
         description: form.description,
         action_taken: form.action_taken || null,
@@ -90,6 +102,19 @@ export default function SafetyPage() {
   const severityColors: Record<string, string> = { Minor: '#3b82f6', Moderate: '#f59e0b', Major: '#ef4444', Critical: '#7f1d1d' };
   const statusColors: Record<string, string> = { Open: '#ef4444', Investigating: '#f59e0b', Resolved: '#10b981', Closed: '#6b7280' };
 
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const thisMonthIncidents = incidents.filter(i => {
+    if (!i.incident_date) return false;
+    const d = new Date(i.incident_date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).length;
+
+  const openIncidents = incidents.filter(i => i.status !== 'Resolved' && i.status !== 'Closed').length;
+  const highSeverityIncidents = incidents.filter(i => i.severity === 'High' || i.severity === 'Critical' || i.severity === 'Major').length;
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -100,7 +125,24 @@ export default function SafetyPage() {
         <button onClick={() => openModal()} className={styles.newBtn} style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>+ Log Incident</button>
       </header>
 
+      {/* Summary stat cards */}
+      <div className={styles.summaryGrid}>
+        <div className={styles.sumCard}>
+          <span className={styles.sumVal}>{thisMonthIncidents}</span>
+          <span className={styles.sumLabel}>Incidents This Month</span>
+        </div>
+        <div className={styles.sumCard} style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+          <span className={styles.sumVal} style={{ color: '#ef4444' }}>{openIncidents}</span>
+          <span className={styles.sumLabel}>Open / Unresolved</span>
+        </div>
+        <div className={styles.sumCard} style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}>
+          <span className={styles.sumVal} style={{ color: '#f59e0b' }}>{highSeverityIncidents}</span>
+          <span className={styles.sumLabel}>High Severity / Critical</span>
+        </div>
+      </div>
+
       <div className={styles.tableCard}>
+
         {loading ? <div className={styles.loading}>Loading safety records...</div> : (
           <table className={styles.table}>
             <thead>
@@ -126,7 +168,7 @@ export default function SafetyPage() {
                   </td>
                   <td style={{ maxWidth: '300px', whiteSpace: 'normal', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>
                     {i.description}
-                    <div className={styles.subCell}>Reported by: {i.employees?.name || 'Admin'}</div>
+                    <div className={styles.subCell}>Reported by: {i.employees?.name || 'System'}</div>
                   </td>
                   <td style={{ maxWidth: '200px', whiteSpace: 'normal', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>{i.action_taken || 'None'}</td>
                   <td>
@@ -140,6 +182,7 @@ export default function SafetyPage() {
                         {INCIDENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <button className={styles.actionSelect} onClick={() => openModal(i)} style={{ padding: '5px 12px' }}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(i.id!)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -168,7 +211,7 @@ export default function SafetyPage() {
                 <div className={styles.fg}><label className={styles.fl}>Date *</label><input required type="date" value={form.incident_date} onChange={e => setForm(f => ({...f, incident_date: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>Reported By</label>
                   <select value={form.reported_by} onChange={e => setForm(f => ({...f, reported_by: e.target.value}))} className={styles.fi}>
-                    <option value="">Admin (Self)</option>
+                    <option value="">{user?.employees?.name || user?.email || 'System'} (Self)</option>
                     {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                 </div>

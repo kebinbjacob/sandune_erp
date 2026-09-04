@@ -52,9 +52,10 @@ export default function LoginPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Password (if set)</label>
+            <label className={styles.label}>Password</label>
             <input 
-              type="password" 
+              type="password"
+              required
               placeholder="••••••••"
               className={styles.input}
               value={password}

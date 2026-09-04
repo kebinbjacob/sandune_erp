@@ -47,3 +47,21 @@ export async function updateExpense(id: string, updates: Partial<Expense>): Prom
   const { error } = await supabase.from('expenses').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteExpense(id: string): Promise<void> {
+  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function uploadReceipt(file: File): Promise<string> {
+  const ext = file.name.split('.').pop();
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from('receipts')
+    .upload(fileName, file, { cacheControl: '3600', upsert: false });
+  if (uploadError) throw uploadError;
+
+  const { data: publicData } = supabase.storage.from('receipts').getPublicUrl(fileName);
+  return publicData.publicUrl;
+}
+

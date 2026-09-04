@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getProject, updateProject, Project, PROJECT_STATUSES } from '@/lib/services/projectService';
+import { getProject, updateProject, deleteProject, Project, PROJECT_STATUSES } from '@/lib/services/projectService';
 import { getTasksByProject, Task, TASK_STATUSES } from '@/lib/services/projectService';
+import { getClients, Client } from '@/lib/services/crmService';
 import styles from '../../expenses/expenses.module.css';
 
 export default function ProjectDetailsPage() {
@@ -11,6 +12,7 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Edit state
@@ -22,9 +24,10 @@ export default function ProjectDetailsPage() {
     setLoading(true);
     try {
       if (typeof id === 'string') {
-        const [p, t] = await Promise.all([getProject(id), getTasksByProject(id)]);
+        const [p, t, c] = await Promise.all([getProject(id), getTasksByProject(id), getClients()]);
         setProject(p);
         setTasks(t);
+        setClients(c);
         setForm(p || {});
       }
     } catch(e) { console.error(e); }
@@ -32,6 +35,17 @@ export default function ProjectDetailsPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  const handleDeleteProject = async () => {
+    if (!project?.id) return;
+    if (!window.confirm(`Are you sure you want to delete project "${project.name}"? This action cannot be undone.`)) return;
+    try {
+      await deleteProject(project.id);
+      router.push('/projects');
+    } catch (err) {
+      alert('Failed to delete project');
+    }
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,15 +71,27 @@ export default function ProjectDetailsPage() {
   if (loading) return <div className={styles.container}><div className={styles.loading}>Loading project details...</div></div>;
   if (!project) return <div className={styles.container}><div className={styles.loading}>Project not found.</div></div>;
 
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+  const autoCompletionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : null;
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <div>
           <button onClick={() => router.push('/projects')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>← Back to Projects</button>
           <h1 className={styles.title}>{project.name} <span style={{ fontSize: '1rem', color: '#64748b' }}>({project.project_code})</span></h1>
-          <p className={styles.subtitle}>{project.description || 'No description provided.'}</p>
+          <p className={styles.subtitle}>
+            {project.client ? <strong>Client: {project.client} • </strong> : null}
+            {project.description || 'No description provided.'}
+          </p>
         </div>
-        {!isEditing && <button onClick={() => setIsEditing(true)} className={styles.newBtn}>Edit Project</button>}
+        {!isEditing && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setIsEditing(true)} className={styles.newBtn}>Edit Project</button>
+            <button onClick={handleDeleteProject} className={styles.deleteBtn}>Delete Project</button>
+          </div>
+        )}
       </header>
 
       {isEditing ? (
@@ -74,6 +100,13 @@ export default function ProjectDetailsPage() {
           <form onSubmit={handleUpdate}>
             <div className={styles.formGrid}>
               <div className={styles.fg}><label className={styles.fl}>Project Name</label><input required value={form.name || ''} onChange={e => setForm(f => ({...f, name: e.target.value}))} className={styles.fi} /></div>
+              <div className={styles.fg}>
+                <label className={styles.fl}>Client</label>
+                <select value={form.client || ''} onChange={e => setForm(f => ({...f, client: e.target.value}))} className={styles.fi}>
+                  <option value="">Select Client...</option>
+                  {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
               <div className={styles.fg}><label className={styles.fl}>Status</label>
                 <select value={form.status || ''} onChange={e => setForm(f => ({...f, status: e.target.value}))} className={styles.fi}>
                   {PROJECT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -84,7 +117,22 @@ export default function ProjectDetailsPage() {
             <div className={styles.formGrid}>
               <div className={styles.fg}><label className={styles.fl}>Start Date</label><input type="date" value={form.start_date || ''} onChange={e => setForm(f => ({...f, start_date: e.target.value}))} className={styles.fi} /></div>
               <div className={styles.fg}><label className={styles.fl}>End Date</label><input type="date" value={form.end_date || ''} onChange={e => setForm(f => ({...f, end_date: e.target.value}))} className={styles.fi} /></div>
-              <div className={styles.fg}><label className={styles.fl}>Completion %</label><input type="number" min="0" max="100" value={form.completion_pct || 0} onChange={e => setForm(f => ({...f, completion_pct: Number(e.target.value)}))} className={styles.fi} /></div>
+              <div className={styles.fg}>
+                <label className={styles.fl}>
+                  Manual Completion %
+                  {autoCompletionPct !== null && (
+                    <span style={{ color: '#10b981', marginLeft: '6px', fontSize: '0.75rem', textTransform: 'none' }}>
+                      (Auto-computed: {autoCompletionPct}%)
+                    </span>
+                  )}
+                </label>
+                <input type="number" min="0" max="100" value={form.completion_pct || 0} onChange={e => setForm(f => ({...f, completion_pct: Number(e.target.value)}))} className={styles.fi} />
+                {autoCompletionPct !== null && (
+                  <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: `${autoCompletionPct}%`, background: '#10b981', height: '100%' }} />
+                  </div>
+                )}
+              </div>
             </div>
             <div className={styles.formGrid}>
               <div className={styles.fg}><label className={styles.fl}>Budget</label><input type="number" value={form.budget || 0} onChange={e => setForm(f => ({...f, budget: Number(e.target.value)}))} className={styles.fi} /></div>
@@ -99,7 +147,20 @@ export default function ProjectDetailsPage() {
       ) : (
         <div className={styles.summaryGrid}>
           <div className={styles.sumCard}><span className={styles.sumLabel}>Status</span><span className={styles.sumVal} style={{ fontSize: '1.25rem' }}>{project.status}</span></div>
-          <div className={styles.sumCard}><span className={styles.sumLabel}>Completion</span><span className={styles.sumVal}>{project.completion_pct || 0}%</span></div>
+          {totalTasks > 0 ? (
+            <div className={styles.sumCard}>
+              <span className={styles.sumLabel}>Completion</span>
+              <span className={styles.sumVal} style={{ fontSize: '1.3rem' }}>
+                {autoCompletionPct}% <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 400 }}>({completedTasks}/{totalTasks} tasks)</span>
+              </span>
+              <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${autoCompletionPct}%`, background: '#10b981', height: '100%', transition: 'width 0.3s' }} />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Manual set: {project.completion_pct || 0}%</span>
+            </div>
+          ) : (
+            <div className={styles.sumCard}><span className={styles.sumLabel}>Completion</span><span className={styles.sumVal}>{project.completion_pct || 0}%</span></div>
+          )}
           <div className={styles.sumCard}><span className={styles.sumLabel}>Budget</span><span className={styles.sumVal}>${(project.budget || 0).toLocaleString()}</span></div>
           <div className={styles.sumCard}><span className={styles.sumLabel}>Location</span><span className={styles.sumVal} style={{ fontSize: '1rem', marginTop: 'auto' }}>{project.location || 'N/A'}</span></div>
         </div>
@@ -129,3 +190,4 @@ export default function ProjectDetailsPage() {
     </div>
   );
 }
+

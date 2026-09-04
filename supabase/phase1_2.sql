@@ -126,18 +126,6 @@ CREATE POLICY "Allow public select on purchase_orders" ON purchase_orders FOR SE
 CREATE POLICY "Allow public insert on purchase_orders" ON purchase_orders FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "Allow public update on purchase_orders" ON purchase_orders FOR UPDATE TO public USING (true) WITH CHECK (true);
 
--- Ensure we insert some dummy data so the user isn't stuck with empty lists initially
-INSERT INTO clients (name, contact_person, email, phone, address) VALUES 
-('Apex Developers', 'Alice Smith', 'alice@apex.com', '555-0192', '100 Main St, City'),
-('City Transit Authority', 'Bob Johnson', 'bob@cta.gov', '555-0193', '200 Transit Blvd, City')
-ON CONFLICT DO NOTHING;
 
-INSERT INTO contractors (name, specialization, contact_person, phone, email, rating) VALUES 
-('Solid Foundations Inc.', 'Foundation & Concrete', 'Mike Hammer', '555-0201', 'mike@solid.com', 5),
-('SkyHigh Scaffolding', 'Scaffolding', 'Steve Reach', '555-0202', 'steve@skyhigh.com', 4)
-ON CONFLICT DO NOTHING;
+-- No seed data. All CRM records (clients, contractors, vendors) are created via the application.
 
-INSERT INTO vendors (name, category, contact_person, phone, email) VALUES 
-('National Cement Co.', 'Raw Materials', 'Dave Build', '555-0301', 'dave@ncc.com'),
-('Heavy Machinists LLC', 'Heavy Machinery', 'Sarah Lift', '555-0302', 'sarah@hm.com')
-ON CONFLICT DO NOTHING;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getEquipment, createEquipment, updateEquipment, Equipment } from '@/lib/services/resourceService';
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment, Equipment } from '@/lib/services/resourceService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import styles from '../expenses/expenses.module.css';
 
@@ -13,7 +13,7 @@ export default function EquipmentPage() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  const [form, setForm] = useState({ name: '', category: '', serial_number: '', current_project_id: '', last_maintenance_date: '', next_maintenance_date: '', status: '' });
+  const [form, setForm] = useState({ name: '', category: '', serial_number: '', current_project_id: '', last_maintenance_date: '', next_maintenance_date: '', maintenance_notes: '', status: '' });
 
   const load = async () => {
     setLoading(true);
@@ -26,6 +26,16 @@ export default function EquipmentPage() {
 
   useEffect(() => { load(); }, []);
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete equipment "${name}"?`)) return;
+    try {
+      await deleteEquipment(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete equipment');
+    }
+  };
+
   const openModal = (equipment?: Equipment) => {
     if (equipment) {
       setEditingId(equipment.id || null);
@@ -36,11 +46,12 @@ export default function EquipmentPage() {
         current_project_id: equipment.current_project_id || '',
         last_maintenance_date: equipment.last_maintenance_date || '',
         next_maintenance_date: equipment.next_maintenance_date || '',
+        maintenance_notes: equipment.maintenance_notes || '',
         status: equipment.status || ''
       });
     } else {
       setEditingId(null);
-      setForm({ name: '', category: '', serial_number: '', current_project_id: '', last_maintenance_date: '', next_maintenance_date: '', status: '' });
+      setForm({ name: '', category: '', serial_number: '', current_project_id: '', last_maintenance_date: '', next_maintenance_date: '', maintenance_notes: '', status: '' });
     }
     setShowModal(true);
   };
@@ -54,6 +65,7 @@ export default function EquipmentPage() {
         current_project_id: form.current_project_id || null,
         last_maintenance_date: form.last_maintenance_date || null,
         next_maintenance_date: form.next_maintenance_date || null,
+        maintenance_notes: form.maintenance_notes || null,
         status: form.current_project_id ? 'In Use' : 'Available'
       };
       if (editingId) {
@@ -89,12 +101,23 @@ export default function EquipmentPage() {
                   <td>
                     <div className={styles.boldCell}>{eq.name}</div>
                     <span className={styles.categoryBadge} style={{background: 'rgba(255,255,255,0.05)'}}>{eq.category}</span>
+                    <details style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                      <summary style={{ outline: 'none', userSelect: 'none', color: '#818cf8', fontWeight: 600 }}>📝 Maintenance Notes</summary>
+                      <p style={{ margin: '4px 0 0', padding: '6px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.8)' }}>
+                        {eq.maintenance_notes || 'No maintenance notes logged.'}
+                      </p>
+                    </details>
                   </td>
                   <td className={styles.subCell}>{eq.serial_number || '—'}</td>
                   <td>{eq.projects?.name || <span style={{color: 'rgba(255,255,255,0.3)'}}>Unassigned</span>}</td>
                   <td><span className={styles.categoryBadge} style={{ background: eq.status === 'Available' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99,102,241,0.2)', color: eq.status === 'Available' ? '#10b981' : '#818cf8' }}>{eq.status}</span></td>
                   <td className={styles.subCell}>{eq.next_maintenance_date || '—'}</td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(eq)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(eq)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(eq.id!, eq.name)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {equipments.length === 0 && <tr><td colSpan={6} className={styles.loading}>No equipment records found.</td></tr>}
@@ -128,6 +151,16 @@ export default function EquipmentPage() {
                 <div className={styles.fg}><label className={styles.fl}>Last Maintenance</label><input type="date" value={form.last_maintenance_date} onChange={e => setForm(f => ({...f, last_maintenance_date: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>Next Maintenance</label><input type="date" value={form.next_maintenance_date} onChange={e => setForm(f => ({...f, next_maintenance_date: e.target.value}))} className={styles.fi} /></div>
               </div>
+              <div className={styles.fg}>
+                <label className={styles.fl}>Maintenance Notes</label>
+                <textarea
+                  value={form.maintenance_notes}
+                  onChange={e => setForm(f => ({...f, maintenance_notes: e.target.value}))}
+                  className={styles.fi}
+                  rows={3}
+                  placeholder="Logs, issues, parts replaced..."
+                />
+              </div>
               <div className={styles.modalFooter}>
                 <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Save Equipment')}</button>
               </div>
@@ -138,3 +171,4 @@ export default function EquipmentPage() {
     </div>
   );
 }
+

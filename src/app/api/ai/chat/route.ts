@@ -4,7 +4,7 @@ import { processAIQuery } from '@/lib/ai/aiEngine';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { message, history, currentRoute, userRole, userName, userEmail } = body;
+    const { message, history, currentRoute, userRole, userName, userEmail, useGemini } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message query is required' }, { status: 400 });
@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       userRole,
       userName,
       userEmail,
+      useGemini,
     });
 
     return NextResponse.json({ success: true, message: response });

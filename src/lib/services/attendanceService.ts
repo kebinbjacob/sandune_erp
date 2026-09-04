@@ -48,6 +48,7 @@ export interface AuditLogEntry {
   reason: string | null;
   remarks: string | null;
   changed_at: string;
+  employees?: { name: string; role: string; department: string } | null;
 }
 
 // Fetch all employees with their attendance for a given date
@@ -92,7 +93,8 @@ export async function markAttendance(
   status: AttendanceStatus,
   reason: string,
   remarks: string,
-  existingRecord?: AttendanceRecord
+  existingRecord?: AttendanceRecord,
+  markedBy: string = 'System'
 ): Promise<void> {
   let attendanceId: string;
   const previousStatus = existingRecord?.status ?? null;
@@ -101,7 +103,7 @@ export async function markAttendance(
     // Update existing
     const { data, error } = await supabase
       .from('attendance')
-      .update({ status, notes: reason, remarks, marked_by: 'Admin' })
+      .update({ status, notes: reason, remarks, marked_by: markedBy })
       .eq('id', existingRecord.id)
       .select('id')
       .single();
@@ -111,7 +113,7 @@ export async function markAttendance(
     // Insert new
     const { data, error } = await supabase
       .from('attendance')
-      .insert([{ employee_id: employeeId, date, status, notes: reason, remarks, marked_by: 'Admin' }])
+      .insert([{ employee_id: employeeId, date, status, notes: reason, remarks, marked_by: markedBy }])
       .select('id')
       .single();
     if (error) throw error;
@@ -125,7 +127,7 @@ export async function markAttendance(
     date,
     previous_status: previousStatus,
     new_status: status,
-    changed_by: 'Admin',
+    changed_by: markedBy,
     reason: reason || null,
     remarks: remarks || null,
   }]);
@@ -135,7 +137,8 @@ export async function markAttendance(
 export async function bulkMarkAttendance(
   employeeIds: string[],
   date: string,
-  status: AttendanceStatus
+  status: AttendanceStatus,
+  markedBy: string = 'System'
 ): Promise<void> {
   for (const empId of employeeIds) {
     const { data: existing } = await supabase
@@ -145,7 +148,7 @@ export async function bulkMarkAttendance(
       .eq('date', date)
       .single();
 
-    await markAttendance(empId, date, status, 'Bulk mark', '', (existing as unknown as AttendanceRecord) ?? undefined);
+    await markAttendance(empId, date, status, 'Bulk mark', '', (existing as unknown as AttendanceRecord) ?? undefined, markedBy);
   }
 }
 
@@ -161,3 +164,68 @@ export async function getAuditLog(employeeId: string, date: string): Promise<Aud
   if (error) throw error;
   return data || [];
 }
+
+// Fetch all audit logs with optional filters
+export async function getAllAuditLogs(filters?: {
+  employeeId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<AuditLogEntry[]> {
+  let query = supabase
+    .from('attendance_audit_log')
+    .select('*, employees:employee_id(name, role, department)')
+    .order('changed_at', { ascending: false });
+
+  if (filters?.employeeId) {
+    query = query.eq('employee_id', filters.employeeId);
+  }
+  if (filters?.startDate) {
+    query = query.gte('date', filters.startDate);
+  }
+  if (filters?.endDate) {
+    query = query.lte('date', filters.endDate);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch employee attendance for a date range
+export async function getEmployeeAttendanceRange(
+  employeeId: string,
+  startDate: string,
+  endDate: string
+): Promise<AttendanceRecord[]> {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*, employees:employee_id(name, role, department, project)')
+    .eq('employee_id', employeeId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch all attendance records for a month/year
+export async function getMonthlyAttendance(
+  year: number,
+  month: number
+): Promise<AttendanceRecord[]> {
+  const startStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*, employees:employee_id(name, role, department, project)')
+    .gte('date', startStr)
+    .lte('date', endStr)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+

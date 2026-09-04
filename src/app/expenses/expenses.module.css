@@ -28,6 +28,21 @@
 .actionSelect { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #f8fafc; padding: 0.3rem 0.5rem; font-size: 0.75rem; cursor: pointer; }
 .actionSelect option { background: #1e1e2e; }
 
+.deleteBtn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+}
+
 .loading { text-align: center; padding: 3rem; color: rgba(255,255,255,0.35); }
 
 /* Modal */

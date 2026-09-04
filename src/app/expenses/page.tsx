@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getExpenses, createExpense, updateExpense, updateExpenseStatus, Expense, EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/lib/services/financeService';
+import { getExpenses, createExpense, updateExpense, updateExpenseStatus, deleteExpense, uploadReceipt, Expense, EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/lib/services/financeService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
 import styles from './expenses.module.css';
@@ -15,6 +15,8 @@ export default function ExpensesPage() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string>('');
   
   const [form, setForm] = useState({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '', status: 'Pending' });
 
@@ -31,9 +33,21 @@ export default function ExpensesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to delete expense "${title}"?`)) return;
+    try {
+      await deleteExpense(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete expense.');
+    }
+  };
+
   const openModal = (expense?: Expense) => {
     if (expense) {
       setEditingId(expense.id || null);
+      setReceiptUrl(expense.receipt_url || '');
+      setReceiptFile(null);
       setForm({
         title: expense.title,
         amount: expense.amount.toString(),
@@ -46,6 +60,8 @@ export default function ExpensesPage() {
       });
     } else {
       setEditingId(null);
+      setReceiptUrl('');
+      setReceiptFile(null);
       setForm({ title: '', amount: '', category: 'Materials', project_id: '', date: '', submitted_by: '', notes: '', status: 'Pending' });
     }
     setShowModal(true);
@@ -55,6 +71,11 @@ export default function ExpensesPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      let finalReceiptUrl = receiptUrl || null;
+      if (receiptFile) {
+        finalReceiptUrl = await uploadReceipt(receiptFile);
+      }
+
       const payload = {
         title: form.title,
         amount: Number(form.amount),
@@ -63,7 +84,8 @@ export default function ExpensesPage() {
         date: form.date,
         submitted_by: form.submitted_by || null,
         notes: form.notes || null,
-        status: form.status
+        status: form.status,
+        receipt_url: finalReceiptUrl
       };
       
       if (editingId) {
@@ -126,6 +148,7 @@ export default function ExpensesPage() {
                 <th>Category</th>
                 <th>Amount</th>
                 <th>Submitted By</th>
+                <th>Receipt</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -142,6 +165,15 @@ export default function ExpensesPage() {
                   <td className={styles.amountCell}>{fmt(e.amount)}</td>
                   <td className={styles.subCell}>{e.employees?.name || 'Admin'}</td>
                   <td>
+                    {e.receipt_url ? (
+                      <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        📎 View
+                      </a>
+                    ) : (
+                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>—</span>
+                    )}
+                  </td>
+                  <td>
                     <span className={styles.statusBadge} style={{ background: `${statusColors[e.status]}22`, color: statusColors[e.status] }}>
                       {e.status}
                     </span>
@@ -157,11 +189,12 @@ export default function ExpensesPage() {
                         {EXPENSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <button className={styles.actionSelect} onClick={() => openModal(e)} style={{ padding: '5px 12px' }}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(e.id!, e.title)}>Delete</button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {expenses.length === 0 && <tr><td colSpan={7} className={styles.loading}>No expenses recorded yet.</td></tr>}
+              {expenses.length === 0 && <tr><td colSpan={8} className={styles.loading}>No expenses recorded yet.</td></tr>}
             </tbody>
           </table>
         )}
@@ -197,6 +230,23 @@ export default function ExpensesPage() {
                   </select>
                 </div>
               </div>
+              <div className={styles.fg}>
+                <label className={styles.fl}>Receipt File</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={e => setReceiptFile(e.target.files?.[0] || null)}
+                  className={styles.fi}
+                />
+                {receiptUrl && (
+                  <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                    Current receipt:{' '}
+                    <a href={receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>
+                      View Receipt ↗
+                    </a>
+                  </div>
+                )}
+              </div>
               <div className={styles.fg}><label className={styles.fl}>Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} className={styles.fi} rows={2} /></div>
               {editingId && (
                 <div className={styles.fg}><label className={styles.fl}>Status</label>
@@ -216,3 +266,4 @@ export default function ExpensesPage() {
     </div>
   );
 }
+

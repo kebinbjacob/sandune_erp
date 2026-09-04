@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getClients, createClient, updateClient, Client } from '@/lib/services/crmService';
+import { getClients, createClient, updateClient, deleteClient, Client } from '@/lib/services/crmService';
 import styles from '../expenses/expenses.module.css';
 
 export default function ClientsPage() {
@@ -19,6 +19,16 @@ export default function ClientsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete client "${name}"?`)) return;
+    try {
+      await deleteClient(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete client');
+    }
+  };
 
   const openModal = (client?: Client) => {
     if (client) {
@@ -53,6 +63,23 @@ export default function ClientsPage() {
     finally { setSaving(false); }
   };
 
+  // R13 Search & Filter
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const filteredClients = clients.filter(c => {
+    if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchContact = c.contact_person?.toLowerCase().includes(q);
+      const matchEmail = c.email?.toLowerCase().includes(q);
+      const matchPhone = c.phone?.toLowerCase().includes(q);
+      if (!matchName && !matchContact && !matchEmail && !matchPhone) return false;
+    }
+    return true;
+  });
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -63,6 +90,37 @@ export default function ClientsPage() {
         <button onClick={() => openModal()} className={styles.newBtn}>+ Add Client</button>
       </header>
 
+      {/* R13: Search & Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search clients by name, contact person, or email..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className={styles.fi}
+          style={{ flex: 1, minWidth: '220px' }}
+        />
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className={styles.fi}
+          style={{ width: 'auto', minWidth: '140px' }}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        {(search || statusFilter !== 'All') && (
+          <button
+            onClick={() => { setSearch(''); setStatusFilter('All'); }}
+            className={styles.cancelBtn}
+            style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading clients...</div> : (
           <table className={styles.table}>
@@ -70,14 +128,19 @@ export default function ClientsPage() {
               <tr><th>Company Name</th><th>Primary Contact</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {clients.map(c => (
+              {filteredClients.map(c => (
                 <tr key={c.id}>
                   <td className={styles.boldCell}>{c.name}</td>
                   <td>{c.contact_person || '—'}</td>
                   <td className={styles.subCell}>{c.email || '—'}</td>
                   <td className={styles.subCell}>{c.phone || '—'}</td>
                   <td><span className={styles.categoryBadge} style={{ background: c.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: c.status === 'Active' ? '#10b981' : '#fff' }}>{c.status}</span></td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(c)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(c)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(c.id!, c.name)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {clients.length === 0 && <tr><td colSpan={6} className={styles.loading}>No clients found.</td></tr>}

@@ -5,15 +5,10 @@ import Link from "next/link";
 import { getEmployees, createEmployee, updateEmployee, Employee } from "@/lib/services/employeeService";
 import styles from "../expenses/expenses.module.css";
 
-const defaultMockEmployees: Employee[] = [
-  { id: '1', employee_id: 'EMP-001', name: 'John Doe', role: 'Site Engineer', department: 'Civil', project: 'Skyline Tower', status: 'Active' },
-  { id: '2', employee_id: 'EMP-002', name: 'Sarah Smith', role: 'Project Manager', department: 'Management', project: 'Metro Extension', status: 'Active' },
-  { id: '3', employee_id: 'EMP-003', name: 'Michael Brown', role: 'Safety Officer', department: 'HSE', project: 'Ocean Heights', status: 'On Leave' },
-  { id: '4', employee_id: 'EMP-004', name: 'Emily Chen', role: 'Architect', department: 'Design', project: 'Skyline Tower', status: 'Active' },
-];
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(defaultMockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedRole, setSelectedRole] = useState<string>("All Roles");

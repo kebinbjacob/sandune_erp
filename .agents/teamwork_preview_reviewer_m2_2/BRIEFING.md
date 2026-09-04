@@ -1,46 +1,45 @@
-# BRIEFING — 2026-08-11T14:27:00Z
+# BRIEFING � 2026-08-29T13:09:30Z
 
 ## Mission
-Review the Vitest and build configuration setup created in Milestone 2 (`vitest.config.ts`, `vitest.setup.ts`, `package.json`).
+Independently review and stress-test Milestone 2 implementations (R4: Universal Delete across 14 CRUD pages & 9 service files, R5: User context audit in attendance, payroll, safety).
 
-## 🔒 My Identity
-- Archetype: reviewer / critic
+## ?? My Identity
+- Archetype: reviewer
 - Roles: reviewer, critic
-- Working directory: c:/Users/kelvin babu/Downloads/sandune-main/sandune-main/.agents/teamwork_preview_reviewer_m2_2
-- Original parent: f8ba576e-f5e5-444f-a132-84db8e3e892e
-- Milestone: milestone_2
-- Instance: 1 of 1
+- Working directory: C:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_reviewer_m2_2
+- Original parent: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Milestone: Milestone 2
+- Instance: 2 of 2
 
-## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code.
-- Check for integrity violations (hardcoded test results, facade implementations, shortcuts bypassing real logic, self-certifying work).
-- Execute `npm test` to verify build/test status.
+## ?? Key Constraints
+- Review-only � do NOT modify implementation code
+- Run build/test verification (npx tsc --noEmit)
+- Adversarial challenge: stress-test assumptions, check edge cases and failure modes
+- Check for integrity violations (hardcoding, facade implementations, test bypass)
 
 ## Current Parent
-- Conversation ID: 3f812e88-fd78-436b-9995-5ce5c6652b76
-- Updated: 2026-08-11T14:27:00Z
+- Conversation ID: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Updated: 2026-08-29T13:09:30Z
 
 ## Review Scope
-- **Files to review**: `vitest.config.ts`, `vitest.setup.ts`, `package.json`
-- **Interface contracts**: Milestone 2 specifications
-- **Review criteria**: correctness, completeness, configuration options (`@vitejs/plugin-react`, `vite-tsconfig-paths`, `jsdom`, `globals: true`, `pool: 'threads'`), npm scripts (`test`, `test:vitest`), test execution status.
+- **Files to review**:
+  - Services: esourceService.ts, crmService.ts, inanceService.ts, shiftService.ts, projectService.ts, 	askService.ts, operationsService.ts, leaveService.ts, leaveBalancesService.ts, ttendanceService.ts, payrollService.ts
+  - Pages: materials/page.tsx, equipment/page.tsx, procurement/page.tsx, clients/page.tsx, contractors/page.tsx, endors/page.tsx, expenses/page.tsx, shifts/page.tsx, projects/page.tsx, projects/[id]/page.tsx, 	asks/page.tsx, 	asks/board/page.tsx, eports/site/page.tsx, safety/page.tsx, leave/page.tsx, leave/balances/page.tsx, ttendance/page.tsx, payroll/page.tsx
+- **Interface contracts**: Acceptance criteria for R4 & R5
+- **Review criteria**: Correctness, type safety, error handling, edge cases, integrity
 
 ## Review Checklist
-- **Items reviewed**: `vitest.config.ts`, `vitest.setup.ts`, `package.json`
-- **Verdict**: REQUEST_CHANGES
-- **Unverified claims**: Clean test run — failed at startup due to package version mismatch (`@vitejs/plugin-react@6.0.5` vs `vite@7.3.6`).
+- **Items reviewed**: Initializing review
+- **Verdict**: pending
+- **Unverified claims**: Universal delete across 14 CRUD pages & 9 services, dynamic user context in attendance/payroll/safety
 
 ## Attack Surface
-- **Hypotheses tested**: DevDependency peer conflicts between major versions of `@vitejs/plugin-react` and `vite`/`vitest`.
-- **Vulnerabilities found**: Confirmed startup crash (`ERR_PACKAGE_PATH_NOT_EXPORTED`) when running `npm test`.
-- **Untested angles**: Execution of full test suite post-downgrade of `@vitejs/plugin-react`.
+- **Hypotheses tested**: Initializing
+- **Vulnerabilities found**: None yet
+- **Untested angles**: Type safety, cascade/foreign key constraints, confirmation prompts, error handling, empty user state
 
 ## Key Decisions Made
-- Issued verdict REQUEST_CHANGES due to `npm test` failing at startup from `@vitejs/plugin-react@6.0.5` incompatibility with `vite@7.3.6`.
-- Verified that configuration options in `vitest.config.ts` and scripts in `package.json` are structurally complete and correct.
-- Generated `review.md` and 5-component `handoff.md` reports.
+- Initiated independent review and adversarial testing for Milestone 2
 
 ## Artifact Index
-- `review.md` — Detailed review report and checklist
-- `handoff.md` — Final 5-component review and handoff report
-- `progress.md` — Liveness heartbeat and progress log
+- handoff.md � Final review report

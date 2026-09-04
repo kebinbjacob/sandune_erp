@@ -21,8 +21,15 @@ export interface Equipment {
   status: string;
   last_maintenance_date?: string | null;
   next_maintenance_date?: string | null;
+  maintenance_notes?: string | null;
   created_at?: string;
   projects?: { name: string } | null;
+}
+
+export interface POLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
 }
 
 export interface PurchaseOrder {
@@ -34,10 +41,12 @@ export interface PurchaseOrder {
   expected_delivery?: string | null;
   total_amount: number;
   status: string;
+  line_items?: POLineItem[] | null;
   created_at?: string;
   vendors?: { name: string } | null;
   projects?: { name: string } | null;
 }
+
 
 export async function getMaterials(): Promise<Material[]> {
   const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
@@ -93,5 +102,20 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
 
 export async function updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<void> {
   const { error } = await supabase.from('purchase_orders').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteMaterial(id: string): Promise<void> {
+  const { error } = await supabase.from('materials').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteEquipment(id: string): Promise<void> {
+  const { error } = await supabase.from('equipment').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deletePurchaseOrder(id: string): Promise<void> {
+  const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
   if (error) throw error;
 }

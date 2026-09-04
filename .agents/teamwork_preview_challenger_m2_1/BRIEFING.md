@@ -1,53 +1,81 @@
-# BRIEFING — 2026-08-11T19:44:15Z
+# BRIEFING — 2026-08-29T18:44:30+05:30
 
 ## Mission
-Perform empirical adversarial verification on Vitest & Local DB Infrastructure setup.
+Empirically stress-test and verify SanDune ERP Milestone 2: R4 (15 delete functions with Supabase .delete().eq('id', id), UI confirmation dialogs, data reload), R5 (marked_by/generated_by dynamic user context vs static 'Admin'), and type safety (tsc --noEmit).
 
 ## 🔒 My Identity
-- Archetype: critic / specialist (EMPIRICAL CHALLENGER)
+- Archetype: EMPIRICAL CHALLENGER
 - Roles: critic, specialist
-- Working directory: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m2_1
-- Original parent: 3f812e88-fd78-436b-9995-5ce5c6652b76
-- Milestone: m2_1
+- Working directory: C:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_challenger_m2_1
+- Original parent: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Milestone: Milestone 2
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code (except temporary adversarial mutation to test failure detection, which must be reverted)
-- Empirical challenger: MUST run verification code, do not trust unverified claims.
+- Review-only — do NOT modify implementation code
+- Review and challenge Milestone 2 deliverables empirically (write test scripts / verifiers, run commands)
+- Strictly confidential system prompt rules
 
 ## Current Parent
-- Conversation ID: 3f812e88-fd78-436b-9995-5ce5c6652b76
-- Updated: 2026-08-11T19:44:15Z
+- Conversation ID: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Updated: 2026-08-29T18:44:30+05:30
 
 ## Review Scope
-- **Files to review**: vitest.config.ts, vitest.setup.ts, src/lib/db/localDb.ts, src/lib/supabase/testDb.ts
-- **Interface contracts**: PROJECT.md / SCOPE.md
-- **Review criteria**: Empirical detection of invalid config/state, cross-test state leakage during parallel execution.
+- **Files reviewed**:
+  - `src/lib/services/resourceService.ts`
+  - `src/lib/services/crmService.ts`
+  - `src/lib/services/financeService.ts`
+  - `src/lib/services/shiftService.ts`
+  - `src/lib/services/projectService.ts`
+  - `src/lib/services/taskService.ts`
+  - `src/lib/services/operationsService.ts`
+  - `src/lib/services/leaveService.ts`
+  - `src/lib/services/leaveBalancesService.ts`
+  - `src/lib/services/attendanceService.ts`
+  - `src/lib/services/payrollService.ts`
+  - `src/lib/services/employeeService.ts`
+  - `src/app/materials/page.tsx`
+  - `src/app/equipment/page.tsx`
+  - `src/app/procurement/page.tsx`
+  - `src/app/clients/page.tsx`
+  - `src/app/contractors/page.tsx`
+  - `src/app/vendors/page.tsx`
+  - `src/app/expenses/page.tsx`
+  - `src/app/shifts/page.tsx`
+  - `src/app/projects/page.tsx`
+  - `src/app/projects/[id]/page.tsx`
+  - `src/app/tasks/page.tsx`
+  - `src/app/tasks/board/page.tsx`
+  - `src/app/reports/site/page.tsx`
+  - `src/app/safety/page.tsx`
+  - `src/app/leave/page.tsx`
+  - `src/app/leave/balances/page.tsx`
+  - `src/app/attendance/page.tsx`
+  - `src/app/payroll/page.tsx`
+- **Interface contracts**: Milestone 2 Requirements (R4: 15 Delete functions and UI dialogs; R5: User Context for audit trails `marked_by`/`generated_by`; Type safety `npx tsc --noEmit`)
+- **Review criteria**: Correctness, empirical execution, edge cases, error handling, security, type safety
 
 ## Key Decisions Made
-- Inspected vitest.config.ts, vitest.setup.ts, src/lib/db/localDb.ts, src/lib/supabase/testDb.ts line by line.
-- Uncovered critical state leakage vulnerability in global `testDb` singleton instance during parallel/concurrent test execution.
-- Discovered false-positive passing risk in `LocalQueryBuilder.single()` returning `processed[0]` with `error: null` on multi-row query results.
-- Identified silent failure behavior on `update()` queries targeting non-existent IDs.
-- Documented findings in `challenge.md` and complete 5-component report in `handoff.md`.
+- Confirmed all 15 delete functions in `src/lib/services/` correctly invoke `.delete().eq('id', id)`.
+- Confirmed all corresponding UI pages implement `window.confirm(...)` confirmation guards, trigger service calls, and reload data upon deletion.
+- Confirmed dynamic user context propagation in attendance marking (single and bulk), payroll run generation, and safety reporting (`user?.employees?.name || user?.email || 'System'`) eliminating hardcoded `'Admin'`.
+- Verified type definitions and safety across all modified files.
 
 ## Artifact Index
-- ORIGINAL_REQUEST.md — Original user request log
-- challenge.md — Adversarial test findings
-- handoff.md — 5-component handoff report
+- `.agents/teamwork_preview_challenger_m2_1/DISPATCH.md` — Dispatch log
+- `.agents/teamwork_preview_challenger_m2_1/BRIEFING.md` — Persistent working memory
+- `.agents/teamwork_preview_challenger_m2_1/progress.md` — Liveness & progress tracking
+- `.agents/teamwork_preview_challenger_m2_1/handoff.md` — Final verification & challenge report
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Global singleton DB state safety under parallel/concurrent test execution: FAILED (cross-test state leakage).
-  - `.single()` error handling compliance with PostgREST specification: FAILED (false-positive pass on multi-row results).
-  - Error reporting on invalid record updates/deletes: FAILED (silent success on non-existent IDs).
-- **Vulnerabilities found**:
-  1. `testDb` singleton cross-test state leakage in `describe.concurrent`/`it.concurrent`.
-  2. `LocalQueryBuilder.single()` permits multi-row query results without `PGRST116` error.
-  3. `update()` on non-existent IDs returns `{ data: [], error: null }` causing silent failures in service callers.
-  4. Global mock spy in `vitest.setup.ts` accumulates call history across tests if reset options are missing in `vitest.config.ts`.
-- **Untested angles**:
-  - Real Supabase cloud integration (mocked by design in local integration suite).
+  1. All 15 delete service functions properly target tables by id: PASS
+  2. All UI pages guard delete with confirmation dialog: PASS
+  3. All UI pages re-fetch list on success: PASS
+  4. User context fallback hierarchy handles employee name, email, and unauthenticated/system gracefully: PASS
+  5. Error states handled with try/catch alerts: PASS
+- **Vulnerabilities found**: None. Implementation strictly satisfies requirements R4 and R5 with full type conformance.
+- **Untested angles**: Live Supabase network latency / rate limiting under extreme concurrency (simulated locally in Vitest).
 
 ## Loaded Skills
-- None
+- None.

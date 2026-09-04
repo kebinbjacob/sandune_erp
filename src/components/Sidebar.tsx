@@ -97,13 +97,13 @@ const navGroups = [
     items: [
       { name: "Expenses", href: "/expenses", icon: "💸" },
       { name: "Payroll", href: "/payroll", icon: "💰" },
+      { name: "User Management", href: "/settings/users", icon: "🔐", adminOnly: true },
       { 
         name: "Settings", 
         icon: "⚙️",
         subItems: [
           { name: "Company Profile", href: "/settings" },
-          { name: "User Roles", href: "/settings/users" },
-          { name: "Preferences", href: "/settings" },
+          { name: "Preferences", href: "/settings/preferences" },
         ]
       },
     ]
@@ -149,6 +149,9 @@ export function Sidebar() {
             <h3 className={styles.groupTitle}>{group.title}</h3>
             <nav className={styles.nav}>
               {group.items.map((item) => {
+                // Hide adminOnly items from non-admins
+                if ((item as any).adminOnly && !['Admin', 'SUPER_ADMIN', 'ADMIN'].includes(user?.role || '')) return null;
+
                 const hasSubItems = !!item.subItems;
                 const isActive = item.href 
                   ? (pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href)))

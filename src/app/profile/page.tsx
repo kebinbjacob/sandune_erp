@@ -23,6 +23,7 @@ export default function ProfilePage() {
 
   // Password Form State
   const [passForm, setPassForm] = useState({
+    currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
@@ -136,14 +137,36 @@ export default function ProfilePage() {
 
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.email) {
+      alert('User email not found.');
+      return;
+    }
+    if (!passForm.currentPassword) {
+      alert('Please enter your current password.');
+      return;
+    }
     if (passForm.newPassword !== passForm.confirmPassword) {
       alert("Passwords don't match!");
+      return;
+    }
+    if (passForm.newPassword.length < 6) {
+      alert('Password must be at least 6 characters.');
       return;
     }
     
     try {
       setPasswordSaving(true);
       
+      // Verify current password with Supabase Auth
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passForm.currentPassword,
+      });
+
+      if (verifyError) {
+        throw new Error('Current password is incorrect.');
+      }
+
       // Update Supabase Auth Password
       const { error: authError } = await supabase.auth.updateUser({
         password: passForm.newPassword
@@ -151,15 +174,9 @@ export default function ProfilePage() {
       
       if (authError) throw authError;
 
-      // Update internal app_users table (if it's tracking password)
-      if (user?.id) {
-        await supabase
-          .from('app_users')
-          .update({ password: passForm.newPassword })
-          .eq('id', user.id);
-      }
+      // Plaintext app_users.password write is removed for security
       
-      setPassForm({ newPassword: '', confirmPassword: '' });
+      setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       alert('Password changed successfully!');
     } catch (error: any) {
       alert(error.message || 'Error changing password');
@@ -277,6 +294,17 @@ export default function ProfilePage() {
             <h2 className={styles.sectionTitle}>🔒 Security & Password</h2>
             <form onSubmit={handlePasswordSave}>
               <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Current Password</label>
+                  <input 
+                    type="password" 
+                    value={passForm.currentPassword} 
+                    onChange={e => setPassForm({...passForm, currentPassword: e.target.value})} 
+                    className={styles.input} 
+                    required 
+                  />
+                </div>
+
                 <div className={styles.formGroup}>
                   <label className={styles.label}>New Password</label>
                   <input 

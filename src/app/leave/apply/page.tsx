@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createLeaveRequest, getEmployees } from '@/lib/services/leaveService';
+import { getLeaveBalances } from '@/lib/services/leaveBalancesService';
 import styles from './apply-leave.module.css';
 
 const LEAVE_TYPES = [
@@ -21,6 +22,7 @@ export default function ApplyLeavePage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [balanceWarning, setBalanceWarning] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     employee_id: '',
@@ -33,6 +35,65 @@ export default function ApplyLeavePage() {
   useEffect(() => {
     getEmployees().then(setEmployees).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkBalance = async () => {
+      if (!form.employee_id || !form.leave_type || !form.start_date || !form.end_date) {
+        if (isMounted) setBalanceWarning(null);
+        return;
+      }
+      const s = new Date(form.start_date);
+      const e = new Date(form.end_date);
+      const diff = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (diff <= 0 || isNaN(diff)) {
+        if (isMounted) setBalanceWarning(null);
+        return;
+      }
+
+      const year = s.getFullYear() || new Date().getFullYear();
+      try {
+        const balances = await getLeaveBalances(year);
+        const empBal = balances.find(b => b.employee_id === form.employee_id);
+        if (!empBal) {
+          if (isMounted) setBalanceWarning(null);
+          return;
+        }
+
+        const normType = form.leave_type.toLowerCase();
+        let total = 0;
+        let used = 0;
+        if (normType.includes('annual')) {
+          total = empBal.annual_total || 0;
+          used = empBal.annual_used || 0;
+        } else if (normType.includes('sick')) {
+          total = empBal.sick_total || 0;
+          used = empBal.sick_used || 0;
+        } else if (normType.includes('casual')) {
+          total = empBal.casual_total || 0;
+          used = empBal.casual_used || 0;
+        } else {
+          if (isMounted) setBalanceWarning(null);
+          return;
+        }
+
+        const remaining = total - used;
+        if (remaining < diff) {
+          if (isMounted) {
+            setBalanceWarning(`Warning: Requested ${diff} days exceeds available ${form.leave_type} balance (${remaining} days remaining: ${total} total, ${used} used). You may still submit for manager review.`);
+          }
+        } else {
+          if (isMounted) setBalanceWarning(null);
+        }
+      } catch (err) {
+        console.error(err);
+        if (isMounted) setBalanceWarning(null);
+      }
+    };
+
+    checkBalance();
+    return () => { isMounted = false; };
+  }, [form.employee_id, form.leave_type, form.start_date, form.end_date]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -133,6 +194,13 @@ export default function ApplyLeavePage() {
               </div>
             )}
 
+            {balanceWarning && (
+              <div style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', padding: '12px 16px', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚠️</span>
+                <span>{balanceWarning}</span>
+              </div>
+            )}
+
             <div className={styles.formGroup}>
               <label className={styles.label}>Reason / Notes</label>
               <textarea
@@ -159,3 +227,4 @@ export default function ApplyLeavePage() {
     </div>
   );
 }
+

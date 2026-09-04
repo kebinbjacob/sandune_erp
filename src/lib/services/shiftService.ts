@@ -58,3 +58,13 @@ export async function updateEmployeeShift(id: string, updates: Partial<EmployeeS
   const { error } = await supabase.from('employee_shifts').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteShift(id: string): Promise<void> {
+  const { error } = await supabase.from('shifts').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteEmployeeShift(id: string): Promise<void> {
+  const { error } = await supabase.from('employee_shifts').delete().eq('id', id);
+  if (error) throw error;
+}

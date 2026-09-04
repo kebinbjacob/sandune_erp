@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getVendors, createVendor, updateVendor, Vendor } from '@/lib/services/crmService';
+import { getVendors, createVendor, updateVendor, deleteVendor, Vendor } from '@/lib/services/crmService';
 import styles from '../expenses/expenses.module.css';
 
 export default function VendorsPage() {
@@ -19,6 +19,16 @@ export default function VendorsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete vendor "${name}"?`)) return;
+    try {
+      await deleteVendor(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete vendor');
+    }
+  };
 
   const openModal = (vendor?: Vendor) => {
     if (vendor) {
@@ -53,6 +63,27 @@ export default function VendorsPage() {
     finally { setSaving(false); }
   };
 
+  // R13 Search & Filter
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const filteredVendors = vendors.filter(v => {
+    if (statusFilter !== 'All' && v.status !== statusFilter) return false;
+    if (categoryFilter !== 'All' && v.category !== categoryFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const matchName = v.name.toLowerCase().includes(q);
+      const matchCat = v.category?.toLowerCase().includes(q);
+      const matchContact = v.contact_person?.toLowerCase().includes(q);
+      const matchEmail = v.email?.toLowerCase().includes(q);
+      if (!matchName && !matchCat && !matchContact && !matchEmail) return false;
+    }
+    return true;
+  });
+
+  const categories = ['All', ...Array.from(new Set(vendors.map(v => v.category).filter(Boolean)))];
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -63,6 +94,45 @@ export default function VendorsPage() {
         <button onClick={() => openModal()} className={styles.newBtn}>+ Add Vendor</button>
       </header>
 
+      {/* R13: Search & Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search vendors by name, category, contact..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className={styles.fi}
+          style={{ flex: 1, minWidth: '220px' }}
+        />
+        <select
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+          className={styles.fi}
+          style={{ width: 'auto', minWidth: '150px' }}
+        >
+          {categories.map(cat => <option key={cat} value={cat}>{cat === 'All' ? 'All Categories' : cat}</option>)}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className={styles.fi}
+          style={{ width: 'auto', minWidth: '130px' }}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        {(search || categoryFilter !== 'All' || statusFilter !== 'All') && (
+          <button
+            onClick={() => { setSearch(''); setCategoryFilter('All'); setStatusFilter('All'); }}
+            className={styles.cancelBtn}
+            style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className={styles.tableCard}>
         {loading ? <div className={styles.loading}>Loading vendors...</div> : (
           <table className={styles.table}>
@@ -70,14 +140,19 @@ export default function VendorsPage() {
               <tr><th>Vendor Name</th><th>Category</th><th>Primary Contact</th><th>Email</th><th>Phone</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {vendors.map(v => (
+              {filteredVendors.map(v => (
                 <tr key={v.id}>
                   <td className={styles.boldCell}>{v.name}</td>
                   <td><span className={styles.categoryBadge} style={{background: 'rgba(255,255,255,0.05)'}}>{v.category}</span></td>
                   <td>{v.contact_person || '—'}</td>
                   <td className={styles.subCell}>{v.email || '—'}</td>
                   <td className={styles.subCell}>{v.phone || '—'}</td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(v)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(v)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(v.id!, v.name)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {vendors.length === 0 && <tr><td colSpan={6} className={styles.loading}>No vendors found.</td></tr>}

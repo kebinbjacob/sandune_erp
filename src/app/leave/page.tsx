@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/Card';
 import { Table } from '@/components/Table';
-import { getLeaveRequests, updateLeaveStatus, LeaveRequest } from '@/lib/services/leaveService';
+import { getLeaveRequests, updateLeaveStatus, deleteLeaveRequest, LeaveRequest } from '@/lib/services/leaveService';
+import { deductLeaveBalance } from '@/lib/services/leaveBalancesService';
+import { exportToCSV } from '@/lib/utils/csvExport';
 import styles from '../employees/page.module.css';
 import pageStyles from './leave.module.css';
 
@@ -26,14 +28,57 @@ export default function LeavePage() {
 
   useEffect(() => { fetchRequests(); }, []);
 
+  const handleExportCSV = () => {
+    const headers = ['Employee Name', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Reason', 'Status', 'Applied At'];
+    const rows = requests.map(r => {
+      const s = new Date(r.start_date);
+      const e = new Date(r.end_date);
+      const diffDays = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return [
+        r.employees?.name || '',
+        r.employees?.department || '',
+        r.leave_type,
+        r.start_date,
+        r.end_date,
+        diffDays,
+        r.reason || '',
+        r.status,
+        r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''
+      ];
+    });
+    exportToCSV(`Leave_Requests_${new Date().toISOString().slice(0, 10)}`, headers, rows);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to withdraw/delete this leave request?')) return;
+    try {
+      await deleteLeaveRequest(id);
+      await fetchRequests();
+    } catch {
+      alert('Failed to delete leave request.');
+    }
+  };
+
   const handleStatusUpdate = async (id: string, status: 'Approved' | 'Rejected') => {
     try {
+      if (status === 'Approved') {
+        const req = requests.find(r => r.id === id);
+        if (req && req.employee_id && req.start_date && req.end_date) {
+          const s = new Date(req.start_date);
+          const e = new Date(req.end_date);
+          const diffDays = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const days = Math.max(1, diffDays);
+          const year = s.getFullYear() || new Date().getFullYear();
+          await deductLeaveBalance(req.employee_id, req.leave_type, days, year);
+        }
+      }
       await updateLeaveStatus(id, status);
       await fetchRequests();
     } catch {
       alert('Failed to update leave status.');
     }
   };
+
 
   const getDuration = (start: string, end: string) => {
     const s = new Date(start);
@@ -81,25 +126,32 @@ export default function LeavePage() {
     {
       header: 'Actions',
       accessor: 'id',
-      render: (id: string, row: LeaveRequest) =>
-        row.status === 'Pending' ? (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => handleStatusUpdate(id, 'Approved')}
-              style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.2s' }}
-            >
-              ✓ Approve
-            </button>
-            <button
-              onClick={() => handleStatusUpdate(id, 'Rejected')}
-              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.2s' }}
-            >
-              ✕ Reject
-            </button>
-          </div>
-        ) : (
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>No actions</span>
-        ),
+      render: (id: string, row: LeaveRequest) => (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {row.status === 'Pending' && (
+            <>
+              <button
+                onClick={() => handleStatusUpdate(id, 'Approved')}
+                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.2s' }}
+              >
+                ✓ Approve
+              </button>
+              <button
+                onClick={() => handleStatusUpdate(id, 'Rejected')}
+                style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.2s' }}
+              >
+                ✕ Reject
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => handleDelete(id)}
+            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.2s' }}
+          >
+            Delete
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -114,9 +166,26 @@ export default function LeavePage() {
           <h1>Leave Management</h1>
           <p className={styles.subtitle}>Review and manage employee leave requests.</p>
         </div>
-        <Link href="/leave/apply" className={pageStyles.applyBtn}>
-          + Apply Leave
-        </Link>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={handleExportCSV}
+            style={{
+              background: 'rgba(16,185,129,0.12)',
+              border: '1px solid rgba(16,185,129,0.3)',
+              color: '#10b981',
+              padding: '0.6rem 1rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.875rem'
+            }}
+          >
+            📥 Export CSV
+          </button>
+          <Link href="/leave/apply" className={pageStyles.applyBtn}>
+            + Apply Leave
+          </Link>
+        </div>
       </header>
 
       {/* Summary cards */}

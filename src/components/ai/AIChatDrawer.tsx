@@ -22,6 +22,7 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+  const [useGemini, setUseGemini] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -86,6 +87,7 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
           userRole: user?.role,
           userName: user?.employees?.name || user?.email?.split('@')[0],
           userEmail: user?.email,
+          useGemini,
         }),
       });
 
@@ -157,11 +159,20 @@ export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
           </div>
 
           <div className={styles.headerActions}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', color: '#cbd5e1' }}>
+              <input 
+                type="checkbox" 
+                checked={useGemini} 
+                onChange={(e) => setUseGemini(e.target.checked)} 
+                title="Enable Gemini AI Agent"
+              />
+              Use Gemini
+            </label>
             <button className={styles.headerBtn} onClick={clearChat} title="Clear conversation">
               🧹 Clear
             </button>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close Assistant">
-              ✕
+              ✖
             </button>
           </div>
         </div>

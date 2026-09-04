@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getProjects, createProject, Project, PROJECT_STATUSES } from '@/lib/services/projectService';
+import { getProjects, createProject, deleteProject, Project, PROJECT_STATUSES } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
+import { getClients, Client } from '@/lib/services/crmService';
 import styles from './projects.module.css';
 
 const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
@@ -17,6 +18,7 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -28,14 +30,26 @@ export default function ProjectsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [p, e] = await Promise.all([getProjects(), getEmployees()]);
+      const [p, e, c] = await Promise.all([getProjects(), getEmployees(), getClients()]);
       setProjects(p);
       setEmployees(e);
+      setClients(c);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
+
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete project "${name}"? This action cannot be undone.`)) return;
+    try {
+      await deleteProject(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete project');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +139,7 @@ export default function ProjectsPage() {
 
                 <div className={styles.cardFooter}>
                   <Link href={`/projects/${p.id}`} className={styles.viewBtn}>View Details →</Link>
+                  <button className={styles.deleteBtn} onClick={() => handleDelete(p.id!, p.name)}>Delete</button>
                 </div>
               </div>
             );
@@ -146,7 +161,13 @@ export default function ProjectsPage() {
             <form onSubmit={handleSubmit} className={styles.modalForm}>
               <div className={styles.formGrid}>
                 <div className={styles.fg}><label className={styles.fl}>Project Name *</label><input required value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} className={styles.fi} placeholder="e.g. Skyline Tower Phase 2" /></div>
-                <div className={styles.fg}><label className={styles.fl}>Client</label><input value={form.client} onChange={e => setForm(p => ({...p, client: e.target.value}))} className={styles.fi} placeholder="Client name" /></div>
+                <div className={styles.fg}>
+                  <label className={styles.fl}>Client</label>
+                  <select value={form.client} onChange={e => setForm(p => ({...p, client: e.target.value}))} className={styles.fi}>
+                    <option value="">Select Client...</option>
+                    {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
                 <div className={styles.fg}><label className={styles.fl}>Status</label>
                   <select value={form.status} onChange={e => setForm(p => ({...p, status: e.target.value}))} className={styles.fi}>
                     {PROJECT_STATUSES.map(s => <option key={s}>{s}</option>)}

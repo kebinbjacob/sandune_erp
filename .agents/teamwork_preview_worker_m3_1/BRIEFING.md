@@ -1,58 +1,74 @@
-# BRIEFING — 2026-08-11T20:02:55Z
+# BRIEFING — 2026-08-29T18:49:39Z
 
 ## Mission
-Milestone 3 — Parallel UI Component & Backend Service CRUD Test Implementation.
+Implement Milestone 3: Core Operations, Tasks, Projects & Workflows (R6, R8, R12, R14, R15, R17, R18, R19, R20, R22) for SanDune ERP.
 
 ## 🔒 My Identity
-- Archetype: subagent
+- Archetype: Worker 3 (implementer, qa, specialist)
 - Roles: implementer, qa, specialist
-- Working directory: c:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_worker_m3_1
-- Original parent: 3f812e88-fd78-436b-9995-5ce5c6652b76
-- Milestone: Milestone 3
+- Working directory: C:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork_preview_worker_m3_1
+- Original parent: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Milestone: Milestone 3 (Core Operations & Workflows)
 
 ## 🔒 Key Constraints
-- CODE_ONLY network mode: NO external web access.
-- DO NOT CHEAT: Genuine implementations only, no hardcoded test results, facade implementations, or circumventing tasks.
-- Modify only designated project source/test files and own agent directory.
+- Genuine implementation with no cheating or hardcoded dummy facades.
+- Strict type-safety: `npx tsc --noEmit` and `npm run build` must succeed with 0 errors.
+- Minimal changes: preserve existing comments, styles, and functionality.
 
 ## Current Parent
-- Conversation ID: 3f812e88-fd78-436b-9995-5ce5c6652b76
-- Updated: 2026-08-11T20:02:55Z
+- Conversation ID: dab4f6f3-58b3-4b78-81f9-91f0cdfaee69
+- Updated: 2026-08-29T18:49:39Z
 
 ## Task Summary
-- **What to build**: UI Component Unit & Interaction Test Suites (`src/__tests__/ui/login.test.tsx`, `src/__tests__/ui/createEmployeeForm.test.tsx`), Backend Service CRUD Integration Test Suites (`src/__tests__/integration/authService.test.ts`, `userServiceCrud.test.ts`, `employeeServiceCrud.test.ts`) using `testDb`.
-- **Success criteria**: `npx vitest run` passes with 0 failures in parallel execution mode.
-- **Interface contracts**: See `PROJECT.md`.
+- **What to build**: 
+  - R6: Auto-decrement leave balances on approval in `leave/page.tsx`.
+  - R8: Task editing modal in `/tasks` and `/tasks/board`.
+  - R12: Project -> Client linkage dynamic dropdown in `projects/page.tsx` and `projects/[id]/page.tsx`.
+  - R14: Expense receipt upload to Supabase Storage in `expenses/page.tsx`.
+  - R15: Purchase order line items repeater with auto-sum and JSONB save in `procurement/page.tsx`.
+  - R17: Leave balance validation warning banner on `/leave/apply`.
+  - R18: Attendance auto-close day button to mark unmarked employees as Absent in `attendance/page.tsx`.
+  - R19: Equipment maintenance notes textarea and collapsible details in `equipment/page.tsx`.
+  - R20: Safety severity summary cards in `safety/page.tsx`.
+  - R22: Project completion auto-compute progress bar in `projects/[id]/page.tsx`.
+- **Success criteria**: All features working as specified, 0 TypeScript errors, passing build.
 
 ## Key Decisions Made
-- Added `getEmployeeById` and `deleteEmployee` to `employeeService.ts`.
-- Added `getUserById` and `deleteUser` to `userService.ts`.
-- Created UI component unit & interaction tests for Login Page and Create Employee Form.
-- Created Backend Service CRUD Integration tests for authService, userService, and employeeService against stateful `testDb`.
-
-## Artifact Index
-- `ORIGINAL_REQUEST.md`
-- `BRIEFING.md`
-- `progress.md`
-- `changes.md`
-- `handoff.md`
+- Implemented `deductLeaveBalance` in `leaveBalancesService.ts` to cleanly handle leave balance decrements for annual, sick, and casual leaves with silent fallback if balance records don't exist.
+- Implemented task editing in both table view (`/tasks`) and Kanban board (`/tasks/board`) with reusable modal styles.
+- Linked clients from `getClients()` into project creation and edit forms.
+- Added `uploadReceipt` in `financeService.ts` utilizing Supabase storage bucket `receipts`.
+- Added interactive line items repeater in `procurement/page.tsx` auto-computing totals and saving to `purchase_orders.line_items`.
+- Added dynamic non-blocking warning banner in `/leave/apply` when requested leave duration exceeds employee's remaining balance.
+- Added "Auto-close Day" button in `/attendance` for current/past dates to mark unmarked staff as Absent in bulk.
+- Added `maintenance_notes` to equipment model and collapsible `<details>` card in `/equipment`.
+- Added 3 summary metric cards to `/safety`.
+- Added real-time auto-computed completion percentage and progress bar in `/projects/[id]`.
 
 ## Change Tracker
 - **Files modified**:
-  - `src/lib/services/employeeService.ts`: Added `getEmployeeById` and `deleteEmployee`
-  - `src/lib/services/userService.ts`: Added `getUserById` and `deleteUser`
-  - `src/__tests__/ui/login.test.tsx`: Created UI unit/interaction test suite
-  - `src/__tests__/ui/createEmployeeForm.test.tsx`: Created UI unit/interaction test suite
-  - `src/__tests__/integration/authService.test.ts`: Created backend auth integration test suite
-  - `src/__tests__/integration/userServiceCrud.test.ts`: Created backend user CRUD integration test suite
-  - `src/__tests__/integration/employeeServiceCrud.test.ts`: Created backend employee CRUD integration test suite
-- **Build status**: Ready for verification
-- **Pending issues**: None
+  - `src/lib/services/leaveBalancesService.ts`: Added `deductLeaveBalance()`.
+  - `src/app/leave/page.tsx`: Integrated leave balance deduction upon approval.
+  - `src/app/tasks/page.tsx`: Added task editing modal and action button.
+  - `src/app/tasks/board/page.tsx`: Added task card click and edit support in Kanban modal.
+  - `src/app/projects/page.tsx`: Added client `<select>` dropdown populated from `getClients()`.
+  - `src/app/projects/[id]/page.tsx`: Added client dropdown (R12) and auto-computed task completion progress bar (R22).
+  - `src/lib/services/financeService.ts`: Added `uploadReceipt()` for Supabase Storage.
+  - `src/app/expenses/page.tsx`: Added receipt upload in modal and receipt link in table.
+  - `src/lib/services/resourceService.ts`: Added `POLineItem`, `line_items` to `PurchaseOrder`, `maintenance_notes` to `Equipment`.
+  - `src/app/procurement/page.tsx`: Added line items repeater and auto-total calculation.
+  - `src/app/leave/apply/page.tsx`: Added leave balance validation and warning banner.
+  - `src/app/attendance/page.tsx`: Added Auto-close Day button and bulk Absent marking.
+  - `src/app/equipment/page.tsx`: Added maintenance notes textarea and collapsible details.
+  - `src/app/safety/page.tsx`: Added 3 summary stat cards above incidents table.
+- **Build status**: Verified clean TypeScript & React code.
+- **Pending issues**: None.
 
 ## Quality Status
-- **Build/test result**: All test suites implemented with authentic stateful logic and assertions.
+- **Build/test result**: Verified
 - **Lint status**: Clean
-- **Tests added/modified**: 5 new test files created under `src/__tests__/ui/` and `src/__tests__/integration/`.
+- **Tests added/modified**: Verified all components handle edge cases (empty states, missing records, negative numbers, unassigned clients/projects).
 
 ## Loaded Skills
 - None
+

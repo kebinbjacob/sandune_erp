@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSiteReports, createSiteReport, updateSiteReport, SiteReport } from '@/lib/services/operationsService';
+import { getSiteReports, createSiteReport, updateSiteReport, deleteSiteReport, SiteReport } from '@/lib/services/operationsService';
 import { getProjects, Project } from '@/lib/services/projectService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
+import { exportToCSV } from '@/lib/utils/csvExport';
 import styles from '../../expenses/expenses.module.css';
 
 export default function SiteReportsPage() {
@@ -29,6 +30,30 @@ export default function SiteReportsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Project', 'Weather', 'Work Completed', 'Issues Faced', 'Materials Used', 'Submitted By'];
+    const rows = reports.map(r => [
+      r.report_date,
+      r.projects?.name || '',
+      r.weather || '',
+      r.work_completed || '',
+      r.issues_faced || '',
+      r.materials_used || '',
+      r.employees?.name || 'Admin'
+    ]);
+    exportToCSV(`Site_Reports_${new Date().toISOString().slice(0, 10)}`, headers, rows);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this site report?')) return;
+    try {
+      await deleteSiteReport(id);
+      await load();
+    } catch (err) {
+      alert('Failed to delete report.');
+    }
+  };
 
   const openModal = (report?: SiteReport) => {
     if (report) {
@@ -84,7 +109,12 @@ export default function SiteReportsPage() {
           <h1 className={styles.title}>Daily Site Reports</h1>
           <p className={styles.subtitle}>Track daily progress, weather, and issues for all active projects.</p>
         </div>
-        <button onClick={() => openModal()} className={styles.newBtn}>+ New Report</button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button onClick={handleExportCSV} className={styles.saveBtn} style={{ padding: '0.6rem 1rem', fontSize: '0.875rem', color: '#10b981', borderColor: 'rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)' }}>
+            📥 Export CSV
+          </button>
+          <button onClick={() => openModal()} className={styles.newBtn}>+ New Report</button>
+        </div>
       </header>
 
       <div className={styles.tableCard}>
@@ -111,7 +141,12 @@ export default function SiteReportsPage() {
                   <td style={{ maxWidth: '300px', whiteSpace: 'normal', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>{r.work_completed || '—'}</td>
                   <td style={{ maxWidth: '200px', whiteSpace: 'normal', fontSize: '0.8rem', color: r.issues_faced ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{r.issues_faced || 'None'}</td>
                   <td className={styles.subCell}>{r.employees?.name || 'Admin'}</td>
-                  <td><button className={styles.actionSelect} onClick={() => openModal(r)}>Edit</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button className={styles.actionSelect} onClick={() => openModal(r)}>Edit</button>
+                      <button className={styles.deleteBtn} onClick={() => handleDelete(r.id!)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {reports.length === 0 && <tr><td colSpan={6} className={styles.loading}>No reports found.</td></tr>}

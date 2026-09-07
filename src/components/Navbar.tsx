@@ -4,7 +4,7 @@ import Link from 'next/link';
 import styles from './Navbar.module.css';
 import { useAuth } from '@/lib/context/AuthContext';
 
-export function Navbar() {
+export function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user } = useAuth();
 
   // Get display name: prefer linked employee name, fallback to email
@@ -22,6 +22,9 @@ export function Navbar() {
 
   return (
     <header className={`${styles.navbar} glass`}>
+      <button className={styles.hamburgerBtn} onClick={onMenuClick} aria-label="Toggle Menu">
+        ☰
+      </button>
       <div className={styles.searchContainer}>
         <span className={styles.searchIcon}>🔍</span>
         <input type="text" placeholder="Search across all modules..." className={styles.searchInput} />

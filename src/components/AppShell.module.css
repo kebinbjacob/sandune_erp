@@ -1,0 +1,22 @@
+
+.mainWrapper {
+  margin-left: 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+
+.mainContent {
+  padding: 32px;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .mainWrapper {
+    margin-left: 0;
+  }
+  .mainContent {
+    padding: 16px;
+  }
+}

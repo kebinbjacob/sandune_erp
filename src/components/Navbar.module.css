@@ -122,3 +122,35 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+
+.hamburgerBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  margin-right: 12px;
+}
+
+@media (max-width: 768px) {
+  .hamburgerBtn {
+    display: block;
+  }
+  .searchContainer {
+    display: none;
+  }
+  .navbar {
+    padding: 0 16px;
+  }
+  .userInfo {
+    display: none;
+  }
+  .actions {
+    gap: 12px;
+  }
+  .profile {
+    padding-left: 12px;
+  }
+}
+

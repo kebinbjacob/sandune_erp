@@ -6,6 +6,11 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import styles from './Sidebar.module.css';
 
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
 const navGroups = [
   {
     title: "Overview",
@@ -110,7 +115,7 @@ const navGroups = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
@@ -137,11 +142,13 @@ export function Sidebar() {
   };
 
   return (
-    <aside className={`${styles.sidebar} glass`}>
-      <div className={styles.logo}>
-        <div className={styles.logoIcon} />
-        <h2>SanDune ERP</h2>
-      </div>
+    <>
+      {isOpen && <div className={styles.mobileOverlay} onClick={onClose} />}
+      <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''} glass`}>
+        <div className={styles.logo}>
+          <div className={styles.logoIcon} />
+          <h2>SanDune ERP</h2>
+        </div>
       
       <div className={styles.navScrollArea}>
         {navGroups.map((group) => (
@@ -233,5 +240,6 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

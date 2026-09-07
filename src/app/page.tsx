@@ -50,7 +50,7 @@ export default function Home() {
       {/* Core HR */}
       <section className={styles.sectionGroup}>
         <h2 className={styles.sectionTitle}>Core HR</h2>
-        <div className={styles.metricsGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))' }}>
+        <div className={styles.metricsGrid}>
           <Card title="Workforce Attendance">
             <WorkforceDonutChart />
           </Card>
@@ -68,7 +68,7 @@ export default function Home() {
       {/* Operations */}
       <section className={styles.sectionGroup}>
         <h2 className={styles.sectionTitle}>Operations</h2>
-        <div className={styles.metricsGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))' }}>
+        <div className={styles.metricsGrid}>
           <Card title="Project Progress">
             <ProjectStatusChart />
           </Card>

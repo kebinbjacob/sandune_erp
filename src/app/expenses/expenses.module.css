@@ -67,3 +67,11 @@
 .submitBtn { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: #fff; padding: 0.6rem 1.5rem; border-radius: 10px; cursor: pointer; font-size: 0.875rem; font-weight: 600; font-family: inherit; transition: all 0.2s; }
 .submitBtn:hover:not(:disabled) { transform: translateY(-1px); }
 .submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.tableCard {
+  overflow-x: auto !important;
+}
+.table td, .table th {
+  white-space: nowrap;
+}
+

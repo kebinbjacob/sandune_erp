@@ -14,7 +14,7 @@ export default function SettingsPage() {
     company_name: 'Sandune Construction LLC',
     registration_number: 'CR-9382012',
     address: '123 Business Bay, Dubai, UAE',
-    currency: 'INR (₹)',
+    currency: 'OMR',
     date_format: 'DD/MM/YYYY',
     timezone: 'UTC - Standard',
     email_notifications: 'true',
@@ -268,7 +268,7 @@ export default function SettingsPage() {
                     value={form.currency}
                     onChange={(e) => setForm({ ...form, currency: e.target.value })}
                   >
-                    <option value="INR (₹)">INR (₹)</option>
+                    <option value="OMR">OMR</option>
                     <option value="USD ($)">USD ($)</option>
                     <option value="AED (د.إ)">AED (د.إ)</option>
                     <option value="EUR (€)">EUR (€)</option>

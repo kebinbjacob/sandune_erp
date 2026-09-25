@@ -43,11 +43,11 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     supabase.from('equipment').select('*', { count: 'exact', head: true }).eq('status', 'In Use'),
   ]);
 
-  if (empRes.error) console.error('Error fetching employee count:', empRes.error);
-  if (projRes.error) console.error('Error fetching project count:', projRes.error);
-  if (matRes.error) console.error('Error fetching materials:', matRes.error);
-  if (clientRes.error) console.error('Error fetching client count:', clientRes.error);
-  if (equipRes.error) console.error('Error fetching equipment count:', equipRes.error);
+  if (empRes.error) console.error('Error fetching employee count:', empRes.error.message, empRes.error.details);
+  if (projRes.error) console.error('Error fetching project count:', projRes.error.message, projRes.error.details);
+  if (matRes.error) console.error('Error fetching materials:', matRes.error.message, matRes.error.details);
+  if (clientRes.error) console.error('Error fetching client count:', clientRes.error.message, clientRes.error.details);
+  if (equipRes.error) console.error('Error fetching equipment count:', equipRes.error.message, equipRes.error.details);
 
   const materials = matRes.data || [];
   const lowStockCount = materials.filter(
@@ -102,7 +102,7 @@ export async function getRecentActivities(): Promise<RecentActivityItem[]> {
       type: 'expense',
       icon: '💰',
       title: `${e.employees?.name || 'Finance'} submitted expense "${e.title}"`,
-      description: `Amount: ₹${Number(e.amount || 0).toLocaleString()} (${e.projects?.name || 'General'})`,
+      description: `Amount: OMR ${Number(e.amount || 0).toLocaleString()} (${e.projects?.name || 'General'})`,
       createdAt: e.created_at || new Date().toISOString(),
       timeAgo: formatTimeAgo(e.created_at),
     });

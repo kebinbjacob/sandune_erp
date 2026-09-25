@@ -183,7 +183,7 @@ export default function ProcurementPage() {
                   <td>{po.vendors?.name || '—'}</td>
                   <td>{po.projects?.name || '—'}</td>
                   <td className={styles.subCell}>{po.order_date}</td>
-                  <td className={styles.boldCell}>₹{po.total_amount?.toLocaleString('en-IN')}</td>
+                  <td className={styles.boldCell}>OMR {po.total_amount?.toLocaleString('en-OM')}</td>
                   <td><span className={styles.categoryBadge} style={{ background: po.status === 'Draft' ? 'rgba(255,255,255,0.05)' : 'rgba(99,102,241,0.2)', color: po.status === 'Draft' ? '#cbd5e1' : '#818cf8' }}>{po.status}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -224,7 +224,7 @@ export default function ProcurementPage() {
                   </select>
                 </div>
                 <div className={styles.fg}>
-                  <label className={styles.fl}>Total Amount (₹) *</label>
+                  <label className={styles.fl}>Total Amount (OMR ) *</label>
                   <input
                     type="number"
                     required
@@ -281,7 +281,7 @@ export default function ProcurementPage() {
                       style={{ padding: '6px 8px' }}
                     />
                     <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>
-                      ₹{((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)).toLocaleString('en-IN')}
+                      OMR {((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)).toLocaleString('en-OM')}
                     </span>
                     <button
                       type="button"
@@ -316,4 +316,5 @@ export default function ProcurementPage() {
     </div>
   );
 }
+
 

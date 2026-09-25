@@ -111,7 +111,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const fmt = (n: number) => `OMR ${n.toLocaleString('en-OM')}`;
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const pending = expenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0);
   
@@ -156,7 +156,7 @@ export default function ExpensesPage() {
             <tbody>
               {expenses.map(e => (
                 <tr key={e.id}>
-                  <td>{new Date(e.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td>{new Date(e.date).toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td>
                     <div className={styles.boldCell}>{e.title}</div>
                     <div className={styles.subCell}>{e.projects?.name}</div>
@@ -210,7 +210,7 @@ export default function ExpensesPage() {
             <form onSubmit={handleSubmit} className={styles.modalForm}>
               <div className={styles.formGrid}>
                 <div className={styles.fg}><label className={styles.fl}>Title *</label><input required value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} className={styles.fi} placeholder="Expense description" /></div>
-                <div className={styles.fg}><label className={styles.fl}>Amount (₹) *</label><input required type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} className={styles.fi} placeholder="0.00" /></div>
+                <div className={styles.fg}><label className={styles.fl}>Amount (OMR ) *</label><input required type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} className={styles.fi} placeholder="0.00" /></div>
                 <div className={styles.fg}><label className={styles.fl}>Category</label>
                   <select value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))} className={styles.fi}>
                     {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -266,4 +266,5 @@ export default function ExpensesPage() {
     </div>
   );
 }
+
 

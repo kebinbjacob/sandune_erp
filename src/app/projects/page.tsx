@@ -80,7 +80,7 @@ export default function ProjectsPage() {
     }
   };
 
-  const fmt = (n?: number) => n ? `₹${n.toLocaleString('en-IN')}` : '—';
+  const fmt = (n?: number) => n ? `OMR ${n.toLocaleString('en-OM')}` : '—';
   const totalBudget = projects.reduce((a, p) => a + (p.budget || 0), 0);
   const active = projects.filter(p => p.status === 'Active').length;
 
@@ -134,7 +134,7 @@ export default function ProjectsPage() {
                 <div className={styles.cardMeta}>
                   {p.location && <span className={styles.metaItem}>📍 {p.location}</span>}
                   {p.budget && <span className={styles.metaItem}>💰 {fmt(p.budget)}</span>}
-                  {p.start_date && <span className={styles.metaItem}>📅 {new Date(p.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>}
+                  {p.start_date && <span className={styles.metaItem}>📅 {new Date(p.start_date).toLocaleDateString('en-OM', { month: 'short', year: 'numeric' })}</span>}
                 </div>
 
                 <div className={styles.cardFooter}>
@@ -176,7 +176,7 @@ export default function ProjectsPage() {
                 <div className={styles.fg}><label className={styles.fl}>Location</label><input value={form.location} onChange={e => setForm(p => ({...p, location: e.target.value}))} className={styles.fi} placeholder="Site location" /></div>
                 <div className={styles.fg}><label className={styles.fl}>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({...p, start_date: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>End Date</label><input type="date" value={form.end_date} onChange={e => setForm(p => ({...p, end_date: e.target.value}))} className={styles.fi} /></div>
-                <div className={styles.fg}><label className={styles.fl}>Budget (₹)</label><input type="number" value={form.budget} onChange={e => setForm(p => ({...p, budget: e.target.value}))} className={styles.fi} placeholder="0" /></div>
+                <div className={styles.fg}><label className={styles.fl}>Budget (OMR )</label><input type="number" value={form.budget} onChange={e => setForm(p => ({...p, budget: e.target.value}))} className={styles.fi} placeholder="0" /></div>
                 <div className={styles.fg}><label className={styles.fl}>Project Manager</label>
                   <select value={form.manager_id} onChange={e => setForm(p => ({...p, manager_id: e.target.value}))} className={styles.fi}>
                     <option value="">Select Manager</option>
@@ -196,3 +196,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

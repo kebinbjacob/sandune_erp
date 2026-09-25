@@ -158,7 +158,7 @@ export default function SafetyPage() {
               {incidents.map(i => (
                 <tr key={i.id}>
                   <td style={{ minWidth: '150px' }}>
-                    <div className={styles.boldCell}>{new Date(i.incident_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                    <div className={styles.boldCell}>{new Date(i.incident_date).toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                     <div className={styles.subCell}>{i.projects?.name}</div>
                   </td>
                   <td>
@@ -241,3 +241,4 @@ export default function SafetyPage() {
     </div>
   );
 }
+

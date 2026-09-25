@@ -171,7 +171,7 @@ export default function AttendanceCorrectionsPage() {
             <tbody>
               {logs.map(log => {
                 const changedDate = new Date(log.changed_at);
-                const timeStr = changedDate.toLocaleDateString('en-IN', {
+                const timeStr = changedDate.toLocaleDateString('en-OM', {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
@@ -189,7 +189,7 @@ export default function AttendanceCorrectionsPage() {
                       <div className={styles.subCell}>{log.employees?.role || ''} {log.employees?.department ? `• ${log.employees.department}` : ''}</div>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(log.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(log.date).toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -230,3 +230,4 @@ export default function AttendanceCorrectionsPage() {
     </div>
   );
 }
+

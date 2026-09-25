@@ -102,8 +102,8 @@ export async function computePayroll(
     attMap.get(rec.employee_id)!.push(rec.status);
   }
 
-  const pfRate = (config?.pfPct !== undefined ? config.pfPct : 12) / 100;
-  const esiRate = (config?.esiPct !== undefined ? config.esiPct : 1.75) / 100;
+  const pfRate = (config?.pfPct !== undefined ? config.pfPct : 7) / 100; // PASI 7%
+  const esiRate = (config?.esiPct !== undefined ? config.esiPct : 1) / 100; // JSF 1%
   const taxRate = config?.taxPct !== undefined ? config.taxPct / 100 : null;
 
   return (employees || []).map(emp => {
@@ -113,24 +113,27 @@ export async function computePayroll(
     const onDuty = statuses.filter(s => s === 'On Duty').length;
     const leave = statuses.filter(s => LEAVE_STATUSES.includes(s)).length;
     const halfDay = statuses.filter(s => HALF_DAY_STATUSES.includes(s)).length;
-    const absent = statuses.filter(s => ABSENT_STATUSES.includes(s)).length;
+
+    // Total working days
+    const totalDaysWorked = present + wfh + onDuty + leave + (halfDay * 0.5);
+    const absent = Math.max(0, WORKING_DAYS_PER_MONTH - totalDaysWorked);
 
     const monthlySalary = emp.salary || 0;
     const dailyRate = monthlySalary / WORKING_DAYS_PER_MONTH;
     const absentDeduction = Math.round(absent * dailyRate);
     const halfDayDeduction = Math.round(halfDay * (dailyRate / 2));
 
-    // R21: Statutory Deductions
-    // PF: 12% of gross salary
+    // Oman Statutory Deductions
+    // PASI: 7% of gross salary (mapped to pf_deduction column)
     const pfDeduction = monthlySalary > 0 ? Math.round(monthlySalary * pfRate) : 0;
-    // ESI: 1.75% only if gross salary <= 21,000 threshold
-    const esiDeduction = (monthlySalary > 0 && monthlySalary <= 21000) ? Math.round(monthlySalary * esiRate) : 0;
-    // Tax: Flat rate or bracket (5% if salary > 50,000)
+    
+    // JSF: 1% of gross salary (mapped to esi_deduction column)
+    const esiDeduction = monthlySalary > 0 ? Math.round(monthlySalary * esiRate) : 0;
+
+    // Tax: Flat rate or bracket (0% standard in Oman, unless configured)
     let taxDeduction = 0;
     if (taxRate !== null) {
       taxDeduction = Math.round(monthlySalary * taxRate);
-    } else if (monthlySalary > 50000) {
-      taxDeduction = Math.round(monthlySalary * 0.05);
     }
 
     const totalDeductions = absentDeduction + halfDayDeduction + pfDeduction + esiDeduction + taxDeduction;

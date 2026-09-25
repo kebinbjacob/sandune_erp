@@ -109,16 +109,28 @@ const navGroups = [
         subItems: [
           { name: "Company Profile", href: "/settings" },
           { name: "Preferences", href: "/settings/preferences" },
+          { name: "Hierarchy Mgmt", href: "/settings/hierarchy", superAdminOnly: true },
         ]
       },
     ]
   },
 ];
 
+import { getRolePermissions, RolePermission } from '@/lib/services/hierarchyService';
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
+  const [permissions, setPermissions] = useState<RolePermission[]>([]);
+
+  useEffect(() => {
+    if (user?.role) {
+      getRolePermissions().then(perms => {
+        setPermissions(perms.filter(p => p.role_name === user.role));
+      });
+    }
+  }, [user?.role]);
 
   // Auto-open submenus based on current route
   useEffect(() => {
@@ -150,68 +162,74 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <h2>SanDune ERP</h2>
         </div>
       
-      <div className={styles.navScrollArea}>
-        {navGroups.map((group) => (
-          <div key={group.title} className={styles.navGroup}>
-            <h3 className={styles.groupTitle}>{group.title}</h3>
-            <nav className={styles.nav}>
-              {group.items.map((item) => {
-                // Hide adminOnly items from non-admins
-                if ((item as any).adminOnly && !['Admin', 'SUPER_ADMIN', 'ADMIN'].includes(user?.role || '')) return null;
+        <div className={styles.navScrollArea}>
+          {navGroups.map((group) => {
+            // Dynamic Permission Check: If a permission explicitly denies access, hide the group
+            const perm = permissions.find(p => p.menu_key === group.title);
+            if (perm && !perm.can_read) return null;
 
-                const hasSubItems = !!item.subItems;
-                const isActive = item.href 
-                  ? (pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href)))
-                  : (hasSubItems && item.subItems?.some(sub => pathname === sub.href));
+            return (
+              <div key={group.title} className={styles.navGroup}>
+                <h3 className={styles.groupTitle}>{group.title}</h3>
+                <nav className={styles.nav}>
+                  {group.items.map((item) => {
+                    if ((item as any).adminOnly && !['Admin', 'SUPER_ADMIN', 'ADMIN'].includes(user?.role || '')) return null;
+                    if ((item as any).superAdminOnly && user?.role !== 'SUPER_ADMIN') return null;
 
-                const isOpen = openSubMenus[item.name];
+                    const hasSubItems = !!item.subItems;
+                    const isActive = item.href 
+                      ? (pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href)))
+                      : (hasSubItems && item.subItems?.some(sub => pathname === sub.href));
 
-                return (
-                  <div key={item.name} className={styles.navItemWrapper}>
-                    {hasSubItems ? (
-                      <button 
-                        className={`${styles.navItem} ${styles.navItemButton} ${isActive ? styles.active : ''}`}
-                        onClick={() => toggleSubMenu(item.name)}
-                      >
-                        <span className={styles.icon}>{item.icon}</span>
-                        <span style={{ flex: 1, textAlign: 'left' }}>{item.name}</span>
-                        <span className={styles.chevron}>{isOpen ? '▼' : '▶'}</span>
-                      </button>
-                    ) : (
-                      <Link 
-                        href={item.href!} 
-                        className={`${styles.navItem} ${isActive ? styles.active : ''}`}
-                      >
-                        <span className={styles.icon}>{item.icon}</span>
-                        {item.name}
-                      </Link>
-                    )}
+                    const isOpen = openSubMenus[item.name];
 
-                    {hasSubItems && isOpen && (
-                      <div className={styles.subMenu}>
-                        {item.subItems?.map((sub) => {
-                          if (sub.name === 'User Roles' && !['Admin', 'SUPER_ADMIN'].includes(user?.role || '')) return null;
-                          return (
-                            <Link 
-                              key={sub.name} 
-                              href={sub.href}
-                              className={`${styles.subNavItem} ${pathname === sub.href ? styles.subActive : ''}`}
-                            >
-                              {sub.name}
-                            </Link>
-                          );
-                        })}
+                    return (
+                      <div key={item.name} className={styles.navItemWrapper}>
+                        {hasSubItems ? (
+                          <button 
+                            className={`${styles.navItem} ${styles.navItemButton} ${isActive ? styles.active : ''}`}
+                            onClick={() => toggleSubMenu(item.name)}
+                          >
+                            <span className={styles.icon}>{item.icon}</span>
+                            <span>{item.name}</span>
+                            <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>›</span>
+                          </button>
+                        ) : (
+                          <Link 
+                            href={item.href!} 
+                            className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                            onClick={onClose}
+                          >
+                            <span className={styles.icon}>{item.icon}</span>
+                            <span>{item.name}</span>
+                          </Link>
+                        )}
+
+                        {hasSubItems && isOpen && (
+                          <div className={styles.subMenu}>
+                            {item.subItems!.map((sub) => {
+                              if ((sub as any).superAdminOnly && user?.role !== 'SUPER_ADMIN') return null;
+                              const isSubActive = pathname === sub.href;
+                              return (
+                                <Link 
+                                  key={sub.name}
+                                  href={sub.href}
+                                  className={`${styles.subNavItem} ${isSubActive ? styles.subActive : ''}`}
+                                  onClick={onClose}
+                                >
+                                  {sub.name}
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </nav>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--border-color)' }}>
+                    );
+                  })}
+                </nav>
+              </div>
+            );
+          })}
         <button 
           onClick={logout}
           style={{

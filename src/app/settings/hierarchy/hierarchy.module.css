@@ -1,0 +1,185 @@
+.container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 8px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab.active {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.actionRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.primaryBtn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.primaryBtn:hover {
+  transform: translateY(-1px);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table th {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.table td {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.editBtn {
+  background: rgba(255,255,255,0.05);
+  border: none;
+  color: #a5b4fc;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-right: 8px;
+}
+
+.deleteBtn {
+  background: rgba(239, 68, 68, 0.1);
+  border: none;
+  color: #ef4444;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+/* Modal CSS inline for simplicity or reuse global */
+.permCard {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.permRoleTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.permGrid {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(5, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.permHeader {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.permHeaderLeft {
+  text-align: left;
+}
+
+.permRow {
+  display: contents;
+}
+
+.permCell {
+  padding: 12px 0;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.permCellLeft {
+  text-align: left;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.permCheckbox {
+  accent-color: #6366f1;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}

@@ -104,7 +104,7 @@ export default function DailyAttendancePage() {
   const departments = ['All', ...Array.from(new Set(records.map(r => r.employees?.department).filter(Boolean) as string[]))];
   const projects = ['All', ...Array.from(new Set(records.map(r => r.employees?.project).filter(Boolean) as string[]))];
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-OM', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const openMarkModal = (record: AttendanceRecord) => {
     setMarkModal({ record });
@@ -459,7 +459,7 @@ export default function DailyAttendancePage() {
                     <div key={log.id} className={styles.auditEntry}>
                       <div className={styles.auditEntryHeader}>
                         <span className={styles.auditEntryTime}>
-                          {new Date(log.changed_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {new Date(log.changed_at).toLocaleString('en-OM', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <span className={styles.auditEntryBy}>by {log.changed_by}</span>
                       </div>
@@ -523,3 +523,4 @@ export default function DailyAttendancePage() {
     </div>
   );
 }
+

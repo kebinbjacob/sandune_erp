@@ -43,7 +43,7 @@ export default function LeavePage() {
         diffDays,
         r.reason || '',
         r.status,
-        r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''
+        r.created_at ? new Date(r.created_at).toLocaleDateString('en-OM') : ''
       ];
     });
     exportToCSV(`Leave_Requests_${new Date().toISOString().slice(0, 10)}`, headers, rows);
@@ -225,3 +225,4 @@ export default function LeavePage() {
     </div>
   );
 }
+

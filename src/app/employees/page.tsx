@@ -2,35 +2,39 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getEmployees, createEmployee, updateEmployee, Employee } from "@/lib/services/employeeService";
-import styles from "../expenses/expenses.module.css";
-
+import { getEmployees, Employee, createEmployee, updateEmployee, deleteEmployee } from '@/lib/services/employeeService';
+import { getDepartments, Department, getJobRoles, JobRole } from '@/lib/services/hierarchyService';
+import { useAuth } from '@/lib/context/AuthContext';
+import styles from '../expenses/expenses.module.css';
 
 export default function EmployeesPage() {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
-
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>("All Roles");
   
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', department: '', status: 'Active' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', department: '', status: 'Active', employee_id: '' });
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await getEmployees();
-      if (data && data.length > 0) {
-        setEmployees(data);
-      }
-    } catch (err) {
-      console.error("Failed to load employees:", err);
-    } finally {
-      setLoading(false);
-    }
+      const [empData, deptData, roleData] = await Promise.all([
+        getEmployees(),
+        getDepartments(),
+        getJobRoles()
+      ]);
+      setEmployees(empData || []);
+      setDepartments(deptData || []);
+      setJobRoles(roleData || []);
+    } catch(e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
@@ -44,11 +48,12 @@ export default function EmployeesPage() {
         phone: emp.phone || '',
         role: emp.role,
         department: emp.department || '',
-        status: emp.status || 'Active'
+        status: emp.status || 'Active',
+        employee_id: emp.employee_id || ''
       });
     } else {
       setEditingId(null);
-      setForm({ name: '', email: '', phone: '', role: '', department: '', status: 'Active' });
+      setForm({ name: '', email: '', phone: '', role: '', department: '', status: 'Active', employee_id: '' });
     }
     setShowModal(true);
   };
@@ -57,10 +62,11 @@ export default function EmployeesPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = { ...form, employee_id: form.employee_id.trim() || undefined };
       if (editingId) {
-        await updateEmployee(editingId, form);
+        await updateEmployee(editingId, payload);
       } else {
-        await createEmployee(form);
+        await createEmployee(payload);
       }
       setShowModal(false);
       await load();
@@ -101,10 +107,7 @@ export default function EmployeesPage() {
           onChange={(e) => setSelectedRole(e.target.value)}
         >
           <option value="All Roles" style={{ color: '#000' }}>All Roles</option>
-          <option value="Site Engineer" style={{ color: '#000' }}>Site Engineer</option>
-          <option value="Project Manager" style={{ color: '#000' }}>Project Manager</option>
-          <option value="Safety Officer" style={{ color: '#000' }}>Safety Officer</option>
-          <option value="Architect" style={{ color: '#000' }}>Architect</option>
+          {jobRoles.map(r => <option key={r.id} value={r.name} style={{ color: '#000' }}>{r.name}</option>)}
         </select>
       </div>
 
@@ -149,16 +152,33 @@ export default function EmployeesPage() {
             </div>
             <form onSubmit={handleSubmit} className={styles.modalForm}>
               <div className={styles.formGrid}>
+                <div className={styles.fg}><label className={styles.fl}>Employee Code</label><input placeholder="Auto-generated if blank" value={form.employee_id} onChange={e => setForm(f => ({...f, employee_id: e.target.value}))} className={styles.fi} /></div>
                 <div className={styles.fg}><label className={styles.fl}>Name *</label><input required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className={styles.fi} /></div>
-                <div className={styles.fg}><label className={styles.fl}>Role *</label><input required value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))} className={styles.fi} /></div>
               </div>
               <div className={styles.formGrid}>
-                <div className={styles.fg}><label className={styles.fl}>Department</label><input value={form.department} onChange={e => setForm(f => ({...f, department: e.target.value}))} className={styles.fi} /></div>
+                <div className={styles.fg}>
+                  <label className={styles.fl}>Department</label>
+                  <select value={form.department} onChange={e => setForm(f => ({...f, department: e.target.value, role: ''}))} className={styles.fi}>
+                    <option value="">Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className={styles.fg}>
+                  <label className={styles.fl}>Role *</label>
+                  <select required value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))} className={styles.fi}>
+                    <option value="">Select Role</option>
+                    {jobRoles
+                      .filter(r => !form.department || departments.find(d => d.id === r.department_id)?.name === form.department)
+                      .map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className={styles.formGrid}>
                 <div className={styles.fg}><label className={styles.fl}>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} className={styles.fi} /></div>
-              </div>
-              <div className={styles.formGrid}>
                 <div className={styles.fg}><label className={styles.fl}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} className={styles.fi} /></div>
-                {editingId && (
+              </div>
+              {editingId && (
+                <div className={styles.formGrid}>
                   <div className={styles.fg}><label className={styles.fl}>Status</label>
                     <select value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))} className={styles.fi}>
                       <option value="Active">Active</option>
@@ -166,8 +186,8 @@ export default function EmployeesPage() {
                       <option value="Terminated">Terminated</option>
                     </select>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               <div className={styles.modalFooter}>
                 <button type="submit" disabled={saving} className={styles.submitBtn}>{saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Save Employee')}</button>
               </div>

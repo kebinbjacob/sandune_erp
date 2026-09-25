@@ -134,7 +134,7 @@ export default function SiteReportsPage() {
               {reports.map(r => (
                 <tr key={r.id}>
                   <td style={{ minWidth: '150px' }}>
-                    <div className={styles.boldCell}>{new Date(r.report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                    <div className={styles.boldCell}>{new Date(r.report_date).toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                     <div className={styles.subCell}>{r.projects?.name}</div>
                   </td>
                   <td><span className={styles.categoryBadge}>{r.weather || '—'}</span></td>
@@ -197,3 +197,4 @@ export default function SiteReportsPage() {
     </div>
   );
 }
+

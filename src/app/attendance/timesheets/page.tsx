@@ -140,7 +140,7 @@ export default function TimesheetsPage() {
   const presentDaysCount = dailyEntries.filter(i => i.record && (i.record.status === 'Present' || i.record.status === 'Work From Home' || i.record.status === 'On Duty')).length;
   const halfDaysCount = dailyEntries.filter(i => i.record?.status === 'Half Day').length;
 
-  const weekRangeLabel = `${weekDays[0].toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const weekRangeLabel = `${weekDays[0].toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   return (
     <div className={styles.container}>
@@ -234,8 +234,8 @@ export default function TimesheetsPage() {
             </thead>
             <tbody>
               {dailyEntries.map((entry, index) => {
-                const dayName = entry.date.toLocaleDateString('en-IN', { weekday: 'long' });
-                const dateFormatted = entry.date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+                const dayName = entry.date.toLocaleDateString('en-OM', { weekday: 'long' });
+                const dateFormatted = entry.date.toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' });
                 const isToday = formatDateYMD(entry.date) === formatDateYMD(new Date());
                 const status = entry.record?.status;
                 const statusCfg = status ? STATUS_CONFIG[status] : null;

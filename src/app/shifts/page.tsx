@@ -158,7 +158,7 @@ export default function ShiftsPage() {
                       <span className={styles.categoryBadge}>{a.shifts?.name}</span>
                       <div className={styles.subCell}>{a.shifts?.start_time.slice(0,5)} to {a.shifts?.end_time.slice(0,5)}</div>
                     </td>
-                    <td>{new Date(a.effective_from).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    <td>{new Date(a.effective_from).toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     <td>
                       <span className={styles.statusBadge} style={{ background: isPast ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)', color: isPast ? '#10b981' : '#f59e0b' }}>
                         {isPast ? 'Active' : 'Upcoming'}
@@ -234,3 +234,4 @@ export default function ShiftsPage() {
     </div>
   );
 }
+

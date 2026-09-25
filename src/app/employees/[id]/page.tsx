@@ -68,8 +68,8 @@ export default function EmployeeProfilePage() {
     load();
   }, [id]);
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-  const fmtFull = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  const fmt = (d: string) => new Date(d).toLocaleDateString('en-OM', { day: '2-digit', month: 'short' });
+  const fmtFull = (d: string) => new Date(d).toLocaleDateString('en-OM', { day: '2-digit', month: 'long', year: 'numeric' });
 
   if (loading) return <div className={styles.loading}>Loading employee profile...</div>;
   if (!employee) return <div className={styles.loading}>Employee not found.</div>;
@@ -113,7 +113,7 @@ export default function EmployeeProfilePage() {
             <div className={styles.infoRow}><span className={styles.infoLabel}>Department</span><span className={styles.infoValue}>{employee.department || '—'}</span></div>
             <div className={styles.infoRow}><span className={styles.infoLabel}>Project</span><span className={styles.infoValue}>{employee.project || '—'}</span></div>
             <div className={styles.infoRow}><span className={styles.infoLabel}>Joined</span><span className={styles.infoValue}>{employee.joining_date ? fmtFull(employee.joining_date) : '—'}</span></div>
-            <div className={styles.infoRow}><span className={styles.infoLabel}>Monthly Salary</span><span className={styles.infoValue} style={{ color: '#10b981', fontWeight: 700 }}>{employee.salary ? `₹${Number(employee.salary).toLocaleString('en-IN')}` : '—'}</span></div>
+            <div className={styles.infoRow}><span className={styles.infoLabel}>Monthly Salary</span><span className={styles.infoValue} style={{ color: '#10b981', fontWeight: 700 }}>{employee.salary ? `OMR ${Number(employee.salary).toLocaleString('en-OM')}` : '—'}</span></div>
           </div>
         </div>
 

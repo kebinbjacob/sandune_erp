@@ -89,7 +89,7 @@ export default function ShiftSchedulesPage() {
     return shifts.find(s => s.id === latest.shift_id) || null;
   };
 
-  const weekRangeLabel = `${weekDays[0].toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const weekRangeLabel = `${weekDays[0].toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-OM', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   return (
     <div className={styles.container}>
@@ -138,8 +138,8 @@ export default function ShiftSchedulesPage() {
                 <th style={{ minWidth: '180px' }}>Employee</th>
                 {weekDays.map((d, index) => {
                   const isToday = formatDateYMD(d) === formatDateYMD(new Date());
-                  const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
-                  const dayNum = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  const dayName = d.toLocaleDateString('en-OM', { weekday: 'short' });
+                  const dayNum = d.toLocaleDateString('en-OM', { day: 'numeric', month: 'short' });
                   return (
                     <th key={index} style={{ textAlign: 'center', background: isToday ? 'rgba(99, 102, 241, 0.15)' : undefined, minWidth: '110px' }}>
                       <div style={{ color: isToday ? '#818cf8' : '#f8fafc', fontWeight: 600 }}>{dayName}</div>
@@ -197,3 +197,4 @@ export default function ShiftSchedulesPage() {
     </div>
   );
 }
+

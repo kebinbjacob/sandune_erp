@@ -3,8 +3,10 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card } from "@/components/Card";
 import { createEmployee } from "@/lib/services/employeeService";
+import { getDepartments, getJobRoles, Department, JobRole } from "@/lib/services/hierarchyService";
+import { getProjects, Project } from "@/lib/services/projectService";
 import styles from "../employees/page.module.css";
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 
 function CreateForm() {
   const searchParams = useSearchParams();
@@ -20,9 +22,9 @@ function CreateForm() {
 
   const [formData, setFormData] = useState({
     name: '',
-    role: 'Site Engineer',
-    department: 'Engineering',
-    project: 'Skyline Tower',
+    role: '',
+    department: '',
+    project: '',
     email: '',
     phone: '',
     status: 'Active',
@@ -33,9 +35,33 @@ function CreateForm() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Dynamic dropdowns state
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    if (isEmployeeForm) {
+      console.log("Fetching DB options for Employee form...");
+      Promise.all([
+        getDepartments().catch(e => { console.error(e); return []; }),
+        getJobRoles().catch(e => { console.error(e); return []; }),
+        getProjects().catch(e => { console.error(e); return []; })
+      ]).then(([depts, roles, projs]) => {
+        setDepartments(depts || []);
+        setJobRoles(roles || []);
+        setProjects(projs || []);
+      }).catch(err => console.error("Error loading hierarchy/projects:", err));
+    }
+  }, [isEmployeeForm]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'department') {
+      setFormData((prev) => ({ ...prev, department: value, role: '' }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,15 +71,13 @@ function CreateForm() {
 
     if (isEmployeeForm) {
       try {
-        // Use timestamp-based ID to guarantee uniqueness
-        const empId = formData.employee_id.trim() || `EMP-${Date.now().toString().slice(-6)}`;
+        const empId = formData.employee_id.trim() || undefined;
         await createEmployee({
           employee_id: empId,
           name: formData.name,
           role: formData.role,
           department: formData.department || undefined,
           project: formData.project || undefined,
-          // Send undefined for empty optional UNIQUE fields to avoid constraint violations
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
           status: formData.status,
@@ -63,7 +87,6 @@ function CreateForm() {
         const supaErr = err as { message?: string; details?: string; hint?: string; code?: string };
         const msg = supaErr?.message || supaErr?.details || supaErr?.hint || JSON.stringify(err);
         console.error('Error creating employee:', supaErr);
-        // Friendly messages for common constraint errors
         if (supaErr?.code === '23505') {
           setErrorMsg('A record with this Employee ID or Email already exists. Please use a unique value.');
         } else {
@@ -128,40 +151,48 @@ function CreateForm() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Role *</label>
-                  <input
-                    type="text"
+                  <select
                     name="role"
                     required
-                    className={styles.searchInput}
-                    placeholder="Enter role (e.g. Site Engineer)"
+                    className={styles.selectInput}
                     value={formData.role}
                     onChange={handleChange}
-                  />
+                    style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="" style={{ color: '#000' }}>Select Role</option>
+                    {jobRoles
+                      .filter(r => !formData.department || departments.find(d => d.id === r.department_id)?.name === formData.department)
+                      .map(r => <option key={r.id} value={r.name} style={{ color: '#000' }}>{r.name}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Department</label>
-                  <input
-                    type="text"
+                  <select
                     name="department"
-                    className={styles.searchInput}
-                    placeholder="Enter department"
+                    className={styles.selectInput}
                     value={formData.department}
                     onChange={handleChange}
-                  />
+                    style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="" style={{ color: '#000' }}>Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.name} style={{ color: '#000' }}>{d.name}</option>)}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Project</label>
-                  <input
-                    type="text"
+                  <select
                     name="project"
-                    className={styles.searchInput}
-                    placeholder="Enter project name"
+                    className={styles.selectInput}
                     value={formData.project}
                     onChange={handleChange}
-                  />
+                    style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="" style={{ color: '#000' }}>Select Project (Optional)</option>
+                    {projects.map(p => <option key={p.id} value={p.name} style={{ color: '#000' }}>{p.name}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -198,10 +229,11 @@ function CreateForm() {
                     className={styles.selectInput}
                     value={formData.status}
                     onChange={handleChange}
+                    style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}
                   >
-                    <option value="Active">Active</option>
-                    <option value="On Leave">On Leave</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Active" style={{ color: '#000' }}>Active</option>
+                    <option value="On Leave" style={{ color: '#000' }}>On Leave</option>
+                    <option value="Inactive" style={{ color: '#000' }}>Inactive</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -222,14 +254,14 @@ function CreateForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Name / Title</label>
-                  <input type="text" required className={styles.searchInput} placeholder={`Enter ${type.toLowerCase()} name`} />
+                  <input type="text" required className={styles.searchInput} placeholder={"Enter ${type.toLowerCase()} name"} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Category / Type</label>
-                  <select className={styles.selectInput}>
-                    <option>Standard</option>
-                    <option>Premium</option>
-                    <option>Urgent</option>
+                  <select className={styles.selectInput} style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <option style={{ color: '#000' }}>Standard</option>
+                    <option style={{ color: '#000' }}>Premium</option>
+                    <option style={{ color: '#000' }}>Urgent</option>
                   </select>
                 </div>
               </div>
@@ -255,7 +287,7 @@ function CreateForm() {
             >
               Cancel
             </button>
-            <button type="submit" className={styles.primaryButton} disabled={loading}>
+            <button type="submit" className={styles.primaryButton} disabled={loading} style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', color: 'white', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
               {loading ? 'Saving...' : isEmployeeForm ? 'Save Employee' : `Save ${type}`}
             </button>
           </div>
@@ -267,7 +299,7 @@ function CreateForm() {
 
 export default function CreatePage() {
   return (
-    <Suspense fallback={<div>Loading form...</div>}>
+    <Suspense fallback={<div style={{ color: '#fff', padding: '20px' }}>Loading form...</div>}>
       <CreateForm />
     </Suspense>
   );

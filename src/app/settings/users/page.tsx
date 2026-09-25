@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser, updateUserStatus, deleteUser, AppUser, USER_ROLES } from '@/lib/services/userService';
 import { getEmployees, Employee } from '@/lib/services/employeeService';
+import { getDepartments, Department, getRolePermissions, RolePermission } from '@/lib/services/hierarchyService';
 import { useAuth } from '@/lib/context/AuthContext';
 import styles from '../../expenses/expenses.module.css';
 
@@ -12,6 +13,8 @@ export default function UserManagementPage() {
   
   const [users, setUsers] = useState<AppUser[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [systemRoles, setSystemRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
@@ -35,9 +38,13 @@ export default function UserManagementPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [u, e] = await Promise.all([getUsers(), getEmployees()]);
+      const [u, e, d, p] = await Promise.all([getUsers(), getEmployees(), getDepartments(), getRolePermissions()]);
       setUsers(u);
       setEmployees(e);
+      setDepartments(d);
+      
+      const uniqueRoles = Array.from(new Set(p.map(perm => perm.role_name)));
+      setSystemRoles(uniqueRoles.length > 0 ? uniqueRoles : USER_ROLES);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -47,7 +54,7 @@ export default function UserManagementPage() {
   const openModal = (user?: AppUser) => {
     if (user) {
       setEditingId(user.id || null);
-      const isCustomRole = !USER_ROLES.includes(user.role);
+      const isCustomRole = !systemRoles.includes(user.role);
       setForm({
         employee_id:    user.employee_id,
         email:          user.email,
@@ -235,12 +242,12 @@ export default function UserManagementPage() {
                   <td>
                     <select 
                       className={styles.actionSelect} 
-                      value={USER_ROLES.includes(u.role) ? u.role : 'Other'} 
+                      value={systemRoles.includes(u.role) ? u.role : 'Other'} 
                       onChange={(ev) => handleRoleChange(u.id!, ev.target.value)}
                       style={{ padding: '4px 8px' }}
                     >
-                      {USER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                      {!USER_ROLES.includes(u.role) && (
+                      {systemRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                      {!systemRoles.includes(u.role) && (
                         <option value={u.role}>{u.role} (Custom)</option>
                       )}
                     </select>
@@ -383,7 +390,7 @@ export default function UserManagementPage() {
                   <label className={styles.fl}>System Role *</label>
                   <select required value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))} className={styles.fi}>
                     <option value="">Select Role...</option>
-                    {USER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    {systemRoles.map(r => <option key={r} value={r}>{r}</option>)}
                     <option value="Viewer">Viewer</option>
                     <option value="Other">Other (Custom)</option>
                   </select>
@@ -391,7 +398,10 @@ export default function UserManagementPage() {
 
                 <div className={styles.fg}>
                   <label className={styles.fl}>Department</label>
-                  <input type="text" value={form.department} onChange={e => setForm(f => ({...f, department: e.target.value}))} className={styles.fi} placeholder="e.g. Engineering" />
+                  <select value={form.department} onChange={e => setForm(f => ({...f, department: e.target.value}))} className={styles.fi}>
+                    <option value="">Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  </select>
                 </div>
 
                 {form.role === 'Other' && (

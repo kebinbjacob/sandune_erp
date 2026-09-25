@@ -195,7 +195,7 @@ export default function NewProjectPage() {
           </div>
 
           <div className={styles.fg}>
-            <label className={styles.fl}>Total Budget (₹)</label>
+            <label className={styles.fl}>Total Budget (OMR )</label>
             <input
               type="number"
               min="0"

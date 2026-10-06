@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getEmployees, Employee } from '@/lib/services/employeeService';
+import { getEmployees, getEmployeeById, Employee } from '@/lib/services/employeeService';
 import { getDailyAttendance, STATUS_CONFIG, AttendanceStatus } from '@/lib/services/attendanceService';
 import { supabase } from '@/lib/supabase/client';
 import styles from './profile.module.css';
@@ -28,8 +28,8 @@ export default function EmployeeProfilePage() {
   useEffect(() => {
     if (!id) return;
     const load = async () => {
-      // Fetch employee
-      const { data: emp } = await supabase.from('employees').select('*').eq('id', id).single();
+      // Fetch employee using resilient service layer function
+      const emp = await getEmployeeById(id);
       setEmployee(emp);
 
       // Last 30 days attendance
@@ -44,7 +44,7 @@ export default function EmployeeProfilePage() {
       const { data: att } = await supabase
         .from('attendance')
         .select('date, status, remarks, marked_by')
-        .eq('employee_id', id)
+        .eq('employee_id', emp?.id || id)
         .gte('date', rows[0].date)
         .lte('date', rows[rows.length - 1].date);
 
@@ -74,7 +74,7 @@ export default function EmployeeProfilePage() {
   if (loading) return <div className={styles.loading}>Loading employee profile...</div>;
   if (!employee) return <div className={styles.loading}>Employee not found.</div>;
 
-  const initials = employee.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const initials = (employee.name || 'User').trim().split(/\s+/).map(n => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || 'EM';
   const statusColors: Record<string, string> = { Active: '#10b981', 'On Leave': '#f59e0b', Inactive: '#ef4444' };
 
   return (

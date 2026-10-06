@@ -14,7 +14,7 @@ export async function loginWithEmail(email: string, password?: string): Promise<
 
   if (authError || !authData?.user) {
     console.error('Supabase Auth error:', authError);
-    throw new Error('Invalid email or password.');
+    throw new Error(authError?.message || 'Invalid email or password.');
   }
 
   // 2. Fetch user profile from app_users by auth_id (now that we have an authenticated session)

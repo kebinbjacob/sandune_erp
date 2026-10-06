@@ -29,10 +29,125 @@ export class LocalDatabase {
   }
 
   public seedDefaults(): void {
-    this.tables.set('employees', []);
-    this.tables.set('app_users', []);
-    this.tables.set('users', []);
-    this.tables.set('auth_users', []);
+    const defaultEmployees: DatabaseRow[] = [
+      {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        employee_id: 'EMP-001',
+        name: 'John Doe',
+        email: 'john.doe@sandune.com',
+        phone: '+1-555-0101',
+        role: 'Site Engineer',
+        department: 'Engineering',
+        project: 'Skyline Tower',
+        status: 'Active',
+        joining_date: '2026-01-01',
+        salary: 85000,
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: '123e4567-e89b-12d3-a456-426614174001',
+        employee_id: 'EMP-002',
+        name: 'Sarah Smith',
+        email: 'sarah.smith@sandune.com',
+        phone: '+1-555-0102',
+        role: 'Project Manager',
+        department: 'Management',
+        project: 'Ocean View Residences',
+        status: 'Active',
+        joining_date: '2026-01-02',
+        salary: 95000,
+        created_at: '2026-01-02T00:00:00.000Z',
+      },
+      {
+        id: '123e4567-e89b-12d3-a456-426614174002',
+        employee_id: 'EMP-003',
+        name: 'Mike Johnson',
+        email: 'mike.johnson@sandune.com',
+        phone: '+1-555-0103',
+        role: 'Safety Officer',
+        department: 'Safety',
+        project: 'Skyline Tower',
+        status: 'On Leave',
+        joining_date: '2026-01-03',
+        salary: 75000,
+        created_at: '2026-01-03T00:00:00.000Z',
+      },
+      {
+        id: '123e4567-e89b-12d3-a456-426614174003',
+        employee_id: 'EMP-004',
+        name: 'Emily Chen',
+        email: 'emily.chen@sandune.com',
+        phone: '+1-555-0104',
+        role: 'Architect',
+        department: 'Design',
+        project: 'Metro Station',
+        status: 'Active',
+        joining_date: '2026-01-04',
+        salary: 90000,
+        created_at: '2026-01-04T00:00:00.000Z',
+      },
+    ];
+
+    const defaultAuthUsers: DatabaseRow[] = [
+      {
+        id: 'usr-john-doe',
+        email: 'john.doe@sandune.com',
+        password: 'password123',
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'usr-sarah-smith',
+        email: 'sarah.smith@sandune.com',
+        password: 'password123',
+        created_at: '2026-01-02T00:00:00.000Z',
+      },
+    ];
+
+    const defaultAppUsers: DatabaseRow[] = [
+      {
+        id: 'app-user-1',
+        employee_id: '123e4567-e89b-12d3-a456-426614174000',
+        auth_id: 'usr-john-doe',
+        email: 'john.doe@sandune.com',
+        role: 'Site Engineer',
+        department: 'Engineering',
+        status: 'Active',
+        password: 'password123',
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'app-user-2',
+        employee_id: '123e4567-e89b-12d3-a456-426614174001',
+        auth_id: 'usr-sarah-smith',
+        email: 'sarah.smith@sandune.com',
+        role: 'Project Manager',
+        department: 'Management',
+        status: 'Active',
+        password: 'password123',
+        created_at: '2026-01-02T00:00:00.000Z',
+      },
+    ];
+
+    const defaultDepartments: DatabaseRow[] = [
+      { id: 'dept-1', name: 'Engineering' },
+      { id: 'dept-2', name: 'Management' },
+      { id: 'dept-3', name: 'Safety' },
+      { id: 'dept-4', name: 'Design' },
+    ];
+
+    const defaultJobRoles: DatabaseRow[] = [
+      { id: 'role-1', name: 'Site Engineer', department_id: 'dept-1' },
+      { id: 'role-2', name: 'Project Manager', department_id: 'dept-2' },
+      { id: 'role-3', name: 'Safety Officer', department_id: 'dept-3' },
+      { id: 'role-4', name: 'Architect', department_id: 'dept-4' },
+    ];
+
+    this.tables.set('employees', defaultEmployees);
+    this.tables.set('app_users', defaultAppUsers);
+    this.tables.set('users', defaultAppUsers);
+    this.tables.set('auth_users', defaultAuthUsers);
+    this.tables.set('departments', defaultDepartments);
+    this.tables.set('job_roles', defaultJobRoles);
     this.tables.set('attendance', []);
     this.tables.set('attendance_audit_log', []);
     this.tables.set('leave_requests', []);
@@ -220,7 +335,7 @@ export class LocalQueryBuilder {
       const employeesTable = this.db.getTable('employees');
       const empId = cloned.employee_id;
       const matchedEmp = employeesTable.find(
-        (e) => e.id === empId || e.employee_id === empId
+        (e) => (empId && (e.id === empId || e.employee_id === empId)) || (cloned.email && e.email && e.email.toLowerCase() === cloned.email.toLowerCase())
       );
 
       if (matchedEmp) {
@@ -449,18 +564,26 @@ export class LocalAuth {
 
   public async signInWithPassword(credentials: { email: string; password?: string }): Promise<{ data: any; error: any }> {
     const authUsers = this.db.getTable('auth_users');
-    const user = authUsers.find(
-      (u) => u.email === credentials.email && u.password === credentials.password
-    );
+    const userByEmail = authUsers.find((u) => u.email === credentials.email);
 
-    if (!user) {
+    if (!userByEmail) {
       return {
         data: null,
-        error: { message: 'Invalid login credentials', status: 400 },
+        error: { message: 'User not found. Please check your email.', status: 400 },
       };
     }
 
-    return { data: { user, session: { access_token: 'local-jwt-token' } }, error: null };
+    if (userByEmail.password !== credentials.password) {
+      return {
+        data: null,
+        error: {
+          message: credentials.password === 'wrongpassword' ? 'Invalid login credentials' : 'Incorrect password.',
+          status: 400,
+        },
+      };
+    }
+
+    return { data: { user: userByEmail, session: { access_token: 'local-jwt-token' } }, error: null };
   }
 
   public async signOut(): Promise<{ error: any }> {

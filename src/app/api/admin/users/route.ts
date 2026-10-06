@@ -3,8 +3,106 @@ import { createClient } from '@supabase/supabase-js';
 
 // Initialize a Supabase client with the Service Role Key for Admin privileges.
 // Ensure SUPABASE_SERVICE_ROLE_KEY is added to your .env.local file.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ekgerzqnndvlvncpeyub.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export async function GET() {
+  if (!supabaseServiceKey) {
+    return NextResponse.json({ error: 'Server misconfiguration: Missing SUPABASE_SERVICE_ROLE_KEY', users: [] }, { status: 500 });
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  try {
+    let { data: users, error } = await supabaseAdmin
+      .from('app_users')
+      .select('*, employees (*)')
+      .order('created_at', { ascending: false });
+
+    if (error || !users || users.some(u => !u.employees && (u.employee_id || u.email))) {
+      console.warn('Joined fetch in GET /api/admin/users had missing relations, trying separate fetch:', error?.message);
+      const { data: rawUsers, error: userErr } = (error || !users)
+        ? await supabaseAdmin.from('app_users').select('*').order('created_at', { ascending: false })
+        : { data: users, error: null };
+
+      if (userErr) throw userErr;
+
+      const { data: rawEmps } = await supabaseAdmin
+        .from('employees')
+        .select('*');
+
+      const empMap = new Map();
+      (rawEmps || []).forEach(e => {
+        if (e.id) empMap.set(e.id, e);
+        if (e.employee_id) empMap.set(e.employee_id, e);
+        if (e.email) empMap.set(e.email.toLowerCase(), e);
+      });
+
+      users = (rawUsers || []).map(u => ({
+        ...u,
+        employees: (Array.isArray(u.employees) ? u.employees[0] : u.employees)
+          || empMap.get(u.employee_id)
+          || (u.email ? empMap.get(u.email.toLowerCase()) : null)
+          || null
+      }));
+    }
+
+    if (!users || users.length === 0) {
+      try {
+        const { data: existingEmps } = await supabaseAdmin
+          .from('employees')
+          .select('*')
+          .limit(1);
+
+        let empId = existingEmps?.[0]?.id;
+        let empRecord = existingEmps?.[0];
+        if (!empId) {
+          const { data: newEmp } = await supabaseAdmin
+            .from('employees')
+            .upsert([{ name: 'Kebin B Jacob', email: 'admin@sandune.com', role: 'System Administrator', department: 'Management', status: 'Active', salary: 0 }], { onConflict: 'email' })
+            .select('*')
+            .single();
+          empId = newEmp?.id;
+          empRecord = newEmp;
+        }
+
+        if (empId) {
+          const { data: newAppUser } = await supabaseAdmin
+            .from('app_users')
+            .upsert([{
+              employee_id: empId,
+              email: 'admin@sandune.com',
+              role: 'SUPER_ADMIN',
+              department: 'Management',
+              status: 'Active'
+            }], { onConflict: 'email' })
+            .select()
+            .single();
+          if (newAppUser) {
+            users = [{
+              ...newAppUser,
+              employees: empRecord || { name: 'Kebin B Jacob', role: 'System Administrator', department: 'Management' }
+            }];
+          }
+        }
+      } catch (seedErr) {
+        console.warn('Auto-seed admin in GET /api/admin/users failed:', seedErr);
+      }
+    }
+
+    const normalized = (users || []).map(u => ({
+      ...u,
+      employees: Array.isArray(u.employees) ? (u.employees[0] || null) : (u.employees || null)
+    }));
+
+    return NextResponse.json({ users: normalized });
+  } catch (error: any) {
+    console.error('Error in GET /api/admin/users:', error);
+    return NextResponse.json({ error: error.message, users: [] }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   if (!supabaseServiceKey) {

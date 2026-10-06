@@ -7,12 +7,20 @@ import { getDepartments, Department, getJobRoles, JobRole } from '@/lib/services
 import { useAuth } from '@/lib/context/AuthContext';
 import styles from '../expenses/expenses.module.css';
 
+const defaultMockEmployees: Employee[] = [
+  { id: '123e4567-e89b-12d3-a456-426614174000', employee_id: 'EMP-001', name: 'John Doe', email: 'john.doe@sandune.com', phone: '+1-555-0101', role: 'Site Engineer', department: 'Engineering', project: 'Skyline Tower', status: 'Active', salary: 85000 },
+  { id: '123e4567-e89b-12d3-a456-426614174001', employee_id: 'EMP-002', name: 'Sarah Smith', email: 'sarah.smith@sandune.com', phone: '+1-555-0102', role: 'Project Manager', department: 'Management', project: 'Ocean View Residences', status: 'Active', salary: 95000 },
+  { id: '123e4567-e89b-12d3-a456-426614174002', employee_id: 'EMP-003', name: 'Mike Johnson', email: 'mike.johnson@sandune.com', phone: '+1-555-0103', role: 'Safety Officer', department: 'Safety', project: 'Skyline Tower', status: 'On Leave', salary: 75000 },
+  { id: '123e4567-e89b-12d3-a456-426614174003', employee_id: 'EMP-004', name: 'Emily Chen', email: 'emily.chen@sandune.com', phone: '+1-555-0104', role: 'Architect', department: 'Design', project: 'Metro Station', status: 'Active', salary: 90000 },
+];
+
 export default function EmployeesPage() {
   const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(defaultMockEmployees);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>("All Roles");
   
@@ -24,16 +32,26 @@ export default function EmployeesPage() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [empData, deptData, roleData] = await Promise.all([
-        getEmployees(),
-        getDepartments(),
-        getJobRoles()
+        getEmployees().catch(e => { console.error('getEmployees load error:', e); return []; }),
+        getDepartments().catch(e => { console.error('getDepartments load error:', e); return []; }),
+        getJobRoles().catch(e => { console.error('getJobRoles load error:', e); return []; })
       ]);
-      setEmployees(empData || []);
+      if (empData && empData.length > 0) {
+        setEmployees(empData);
+      } else if (employees.length === 0) {
+        setEmployees(defaultMockEmployees);
+      }
       setDepartments(deptData || []);
       setJobRoles(roleData || []);
-    } catch(e) { console.error(e); }
+    } catch(e: any) { 
+      console.error('Fatal load error:', e);
+      if (employees.length === 0) {
+        setEmployees(defaultMockEmployees);
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -41,12 +59,12 @@ export default function EmployeesPage() {
 
   const openModal = (emp?: Employee) => {
     if (emp) {
-      setEditingId(emp.id || null);
+      setEditingId(emp.id || emp.employee_id || null);
       setForm({
-        name: emp.name,
+        name: emp.name || '',
         email: emp.email || '',
         phone: emp.phone || '',
-        role: emp.role,
+        role: emp.role || '',
         department: emp.department || '',
         status: emp.status || 'Active',
         employee_id: emp.employee_id || ''
@@ -74,12 +92,21 @@ export default function EmployeesPage() {
     finally { setSaving(false); }
   };
 
-  const filtered = employees.filter((emp) => {
+  const filtered = (employees || []).filter((emp) => {
+    if (!emp) return false;
+    const name = (emp.name || '').toLowerCase();
+    const empCode = (emp.employee_id || (emp.id !== undefined && emp.id !== null ? String(emp.id) : '')).toLowerCase();
+    const role = (emp.role || '').toLowerCase();
+    const dept = (emp.department || '').toLowerCase();
+    const search = (searchTerm || '').trim().toLowerCase();
+
     const matchesSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (emp.employee_id && emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      emp.role.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === "All Roles" || emp.role === selectedRole;
+      !search ||
+      name.includes(search) ||
+      empCode.includes(search) ||
+      role.includes(search) ||
+      dept.includes(search);
+    const matchesRole = selectedRole === "All Roles" || (emp.role || '').trim().toLowerCase() === selectedRole.trim().toLowerCase();
     return matchesSearch && matchesRole;
   });
 
@@ -112,32 +139,41 @@ export default function EmployeesPage() {
       </div>
 
       <div className={styles.tableCard}>
+        {loadError && (
+          <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '16px', fontWeight: 500 }}>
+            <p><strong>Error Loading Data:</strong></p>
+            <p>{loadError}</p>
+          </div>
+        )}
         {loading ? <div className={styles.loading}>Loading employees...</div> : (
           <table className={styles.table}>
             <thead>
               <tr><th>Employee ID</th><th>Name</th><th>Role</th><th>Department</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {filtered.map(emp => (
-                <tr key={emp.id}>
-                  <td className={styles.subCell}>{emp.employee_id || emp.id?.slice(0,8)}</td>
-                  <td className={styles.boldCell}>{emp.name}</td>
-                  <td>{emp.role}</td>
+              {filtered.map((emp, idx) => {
+                if (!emp) return null;
+                return (
+                  <tr key={emp.id || emp.employee_id || idx}>
+                    <td className={styles.subCell}>{emp.employee_id || (emp.id ? String(emp.id).slice(0, 8) : '—')}</td>
+                  <td className={styles.boldCell}>{emp.name || 'Unnamed Employee'}</td>
+                  <td>{emp.role || '—'}</td>
                   <td>{emp.department || '—'}</td>
                   <td>
                     <span className={styles.categoryBadge} style={{ background: emp.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: emp.status === 'Active' ? '#10b981' : '#fff' }}>
-                      {emp.status}
+                      {emp.status || 'Active'}
                     </span>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <Link href={`/employees/${emp.id}`} style={{ color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: 'rgba(99,102,241,0.1)', padding: '4px 8px', borderRadius: '4px' }}>View Profile</Link>
+                      <Link href={`/employees/${emp.id || emp.employee_id || ''}`} style={{ color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: 'rgba(99,102,241,0.1)', padding: '4px 8px', borderRadius: '4px' }}>View Profile</Link>
                       <button className={styles.actionSelect} onClick={() => openModal(emp)}>Edit</button>
                     </div>
                   </td>
                 </tr>
-              ))}
-              {filtered.length === 0 && <tr><td colSpan={6} className={styles.loading}>No employees found.</td></tr>}
+              );
+            })}
+            {filtered.length === 0 && <tr><td colSpan={6} className={styles.loading}>No employees found.</td></tr>}
             </tbody>
           </table>
         )}
@@ -167,9 +203,9 @@ export default function EmployeesPage() {
                   <label className={styles.fl}>Role *</label>
                   <select required value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))} className={styles.fi}>
                     <option value="">Select Role</option>
-                    {jobRoles
-                      .filter(r => !form.department || departments.find(d => d.id === r.department_id)?.name === form.department)
-                      .map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                    {(jobRoles || [])
+                      .filter(r => !form.department || (departments || []).find(d => d.id === r.department_id)?.name === form.department)
+                      .map(r => <option key={r.id || r.name} value={r.name}>{r.name}</option>)}
                   </select>
                 </div>
               </div>

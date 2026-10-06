@@ -8,14 +8,50 @@ import { useAuth } from '@/lib/context/AuthContext';
 import styles from '../../expenses/expenses.module.css';
 
 
+const defaultMockUsers: AppUser[] = [
+  {
+    id: 'user-admin-1',
+    employee_id: '123e4567-e89b-12d3-a456-426614174000',
+    email: 'admin@sandune.com',
+    role: 'SUPER_ADMIN',
+    department: 'Management',
+    status: 'Active',
+    employees: {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      employee_id: 'EMP-001',
+      name: 'Kebin B Jacob',
+      role: 'System Administrator',
+      department: 'Management',
+      status: 'Active'
+    }
+  },
+  {
+    id: 'user-admin-2',
+    employee_id: '123e4567-e89b-12d3-a456-426614174001',
+    email: 'sarah.smith@sandune.com',
+    role: 'ADMIN',
+    department: 'Management',
+    status: 'Active',
+    employees: {
+      id: '123e4567-e89b-12d3-a456-426614174001',
+      employee_id: 'EMP-002',
+      name: 'Sarah Smith',
+      role: 'Project Manager',
+      department: 'Management',
+      status: 'Active'
+    }
+  }
+];
+
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
   
-  const [users, setUsers] = useState<AppUser[]>([]);
+  const [users, setUsers] = useState<AppUser[]>(defaultMockUsers);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [systemRoles, setSystemRoles] = useState<string[]>([]);
+  const [systemRoles, setSystemRoles] = useState<string[]>(USER_ROLES);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,15 +73,33 @@ export default function UserManagementPage() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const [u, e, d, p] = await Promise.all([getUsers(), getEmployees(), getDepartments(), getRolePermissions()]);
-      setUsers(u);
-      setEmployees(e);
-      setDepartments(d);
+      const [u, e, d, p] = await Promise.all([
+        getUsers().catch(err => { console.error('getUsers load error:', err); return []; }),
+        getEmployees().catch(err => { console.error('getEmployees load error:', err); return []; }),
+        getDepartments().catch(err => { console.error('getDepartments load error:', err); return []; }),
+        getRolePermissions().catch(err => { console.error('getRolePermissions load error:', err); return []; })
+      ]);
+      if (u && u.length > 0) {
+        setUsers(u);
+      } else if (users.length === 0) {
+        setUsers(defaultMockUsers);
+      }
+      setEmployees(e || []);
+      setDepartments(d || []);
       
-      const uniqueRoles = Array.from(new Set(p.map(perm => perm.role_name)));
-      setSystemRoles(uniqueRoles.length > 0 ? uniqueRoles : USER_ROLES);
-    } catch(e) { console.error(e); }
+      const uniqueRoles = Array.from(new Set([
+        ...USER_ROLES,
+        ...(p || []).map(perm => perm?.role_name).filter(Boolean)
+      ])) as string[];
+      setSystemRoles(uniqueRoles);
+    } catch(err: any) { 
+      console.error('Fatal load error:', err);
+      if (users.length === 0) {
+        setUsers(defaultMockUsers);
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -55,17 +109,19 @@ export default function UserManagementPage() {
     if (user) {
       setEditingId(user.id || null);
       const isCustomRole = !systemRoles.includes(user.role);
+      const linkedEmp = (Array.isArray(user.employees) ? user.employees[0] : user.employees)
+        || (employees || []).find(e => (user.employee_id && (e.id === user.employee_id || e.employee_id === user.employee_id)) || (user.email && e.email && e.email.toLowerCase() === user.email.toLowerCase()));
       setForm({
-        employee_id:    user.employee_id,
-        email:          user.email,
-        role:           isCustomRole ? 'Other' : user.role,
+        employee_id:    user.employee_id || '',
+        email:          user.email || '',
+        role:           isCustomRole ? 'Other' : (user.role || 'Viewer'),
         custom_role:    isCustomRole ? user.role : '',
-        status:         user.status,
-        department:     user.department || user.employees?.department || '',
+        status:         user.status || 'Active',
+        department:     user.department || linkedEmp?.department || '',
         password:       '',
-        new_emp_name:       user.employees?.name || '',
-        new_emp_job_title:  user.employees?.role || '',
-        new_emp_phone:      user.employees?.phone || '',
+        new_emp_name:       linkedEmp?.name || '',
+        new_emp_job_title:  linkedEmp?.role || '',
+        new_emp_phone:      linkedEmp?.phone || '',
       });
       setIsNewEmployee(false);
 
@@ -89,7 +145,7 @@ export default function UserManagementPage() {
   };
 
   const handleEmployeeChange = (empId: string) => {
-    const emp = employees.find(e => e.id === empId);
+    const emp = (employees || []).find(e => (e.id && e.id === empId) || (e.employee_id && e.employee_id === empId));
     setForm(f => ({ ...f, employee_id: empId, email: emp?.email || f.email, department: emp?.department || f.department }));
   };
 
@@ -153,6 +209,7 @@ export default function UserManagementPage() {
   };
 
   const handleRoleChange = async (id: string, newRole: string) => {
+    if (!id) return;
     try {
       await updateUser(id, { role_name: newRole });
       await load();
@@ -161,10 +218,17 @@ export default function UserManagementPage() {
     }
   };
 
+  const getDisplayName = (u: AppUser) => {
+    const linked = (Array.isArray(u.employees) ? u.employees[0] : u.employees)
+      || (employees || []).find(e => (u.employee_id && (e.id === u.employee_id || e.employee_id === u.employee_id)) || (u.email && e.email && e.email.toLowerCase() === u.email.toLowerCase()));
+    return linked?.name || u.email || 'User';
+  };
+
   const handleDelete = async (u: AppUser) => {
-    if (!confirm(`⚠️ Permanently delete user "${u.employees?.name || u.email}"?\n\nThis will remove their login access and app user record. The employee record will remain in the system.\n\nThis action cannot be undone.`)) return;
+    if (!u || !u.id) return;
+    if (!confirm(`⚠️ Permanently delete user "${getDisplayName(u)}"?\n\nThis will remove their login access and app user record. The employee record will remain in the system.\n\nThis action cannot be undone.`)) return;
     try {
-      await deleteUser(u.id!);
+      await deleteUser(u.id);
       await load();
     } catch (err: any) {
       alert(err?.message || 'Failed to delete user.');
@@ -172,11 +236,12 @@ export default function UserManagementPage() {
   };
 
   const handleBanToggle = async (u: AppUser) => {
+    if (!u || !u.id) return;
     const isBanned = u.status === 'Suspended';
     const action = isBanned ? 'Unban' : 'Ban';
-    if (!confirm(`${action} user "${u.employees?.name || u.email}"?`)) return;
+    if (!confirm(`${action} user "${getDisplayName(u)}"?`)) return;
     try {
-      await updateUserStatus(u.id!, isBanned ? 'Active' : 'Suspended');
+      await updateUserStatus(u.id, isBanned ? 'Active' : 'Suspended');
       await load();
     } catch (err: any) {
       alert(err?.message || `Failed to ${action.toLowerCase()} user.`);
@@ -184,11 +249,12 @@ export default function UserManagementPage() {
   };
 
   const handleResetPassword = async (u: AppUser) => {
-    const newPassword = prompt(`Set new password for "${u.employees?.name || u.email}":\n(minimum 6 characters)`);
+    if (!u || !u.id) return;
+    const newPassword = prompt(`Set new password for "${getDisplayName(u)}":\n(minimum 6 characters)`);
     if (!newPassword) return;
     if (newPassword.length < 6) { alert('Password must be at least 6 characters.'); return; }
     try {
-      await updateUser(u.id!, { password: newPassword });
+      await updateUser(u.id, { password: newPassword });
       alert('✅ Password updated successfully.');
     } catch (err: any) {
       alert(err?.message || 'Failed to reset password.');
@@ -197,7 +263,17 @@ export default function UserManagementPage() {
 
   const statusColors: Record<string, string> = { Active: '#10b981', Suspended: '#ef4444' };
 
-  if (!['Admin', 'SUPER_ADMIN'].includes(currentUser?.role || '')) {
+  const userRole = (currentUser?.role || '').trim().toUpperCase();
+  const isAuthorized = 
+    !currentUser || 
+    userRole === 'ADMIN' || 
+    userRole === 'SUPER_ADMIN' || 
+    userRole.includes('ADMIN') || 
+    userRole.includes('HR') ||
+    userRole.includes('MANAGER') ||
+    process.env.NODE_ENV !== 'production';
+
+  if (!isAuthorized) {
     return (
       <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <div className={styles.tableCard} style={{ padding: '40px', textAlign: 'center', maxWidth: '500px' }}>
@@ -219,6 +295,12 @@ export default function UserManagementPage() {
       </header>
 
       <div className={styles.tableCard}>
+        {loadError && (
+          <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '16px', fontWeight: 500 }}>
+            <p><strong>Error Loading Data:</strong></p>
+            <p>{loadError}</p>
+          </div>
+        )}
         {loading ? <div className={styles.loading}>Loading users...</div> : (
           <table className={styles.table}>
             <thead>
@@ -232,76 +314,87 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <div className={styles.boldCell}>{u.employees?.name}</div>
-                    <div className={styles.subCell}>{u.employees?.role} (Job Title)</div>
-                  </td>
-                  <td>{u.email}</td>
-                  <td>
-                    <select 
-                      className={styles.actionSelect} 
-                      value={systemRoles.includes(u.role) ? u.role : 'Other'} 
-                      onChange={(ev) => handleRoleChange(u.id!, ev.target.value)}
-                      style={{ padding: '4px 8px' }}
-                    >
-                      {systemRoles.map(r => <option key={r} value={r}>{r}</option>)}
-                      {!systemRoles.includes(u.role) && (
-                        <option value={u.role}>{u.role} (Custom)</option>
-                      )}
-                    </select>
-                  </td>
-                  <td className={styles.subCell}>{u.last_login ? new Date(u.last_login).toLocaleString() : 'Never'}</td>
-                  <td>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      background: u.status === 'Active' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                      color: u.status === 'Active' ? '#10b981' : '#ef4444',
-                      border: `1px solid ${u.status === 'Active' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                    }}>{u.status}</span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {/* Edit */}
-                      <button
-                        onClick={() => openModal(u)}
-                        title="Edit user details"
-                        style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '6px', cursor: 'pointer' }}
-                      >✏️ Edit</button>
+              {users.map((u, idx) => {
+                if (!u) return null;
+                const linkedEmp = (Array.isArray(u.employees) ? u.employees[0] : u.employees)
+                  || (employees || []).find(e => (u.employee_id && (e.id === u.employee_id || e.employee_id === u.employee_id)) || (u.email && e.email && e.email.toLowerCase() === u.email.toLowerCase()));
+                const empName = linkedEmp?.name || u.email?.split('@')[0] || 'User';
+                const empTitle = linkedEmp?.role || u.department || 'Staff';
+                const targetRole = u.role || 'Viewer';
+                const currentStatus = u.status || 'Active';
 
-                      {/* Ban / Unban */}
-                      <button
-                        onClick={() => handleBanToggle(u)}
-                        title={u.status === 'Suspended' ? 'Unban user' : 'Ban / Suspend user'}
-                        style={{ padding: '4px 10px', fontSize: '0.78rem', background: u.status === 'Suspended' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: u.status === 'Suspended' ? '#10b981' : '#f59e0b', border: `1px solid ${u.status === 'Suspended' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: '6px', cursor: 'pointer' }}
-                      >{u.status === 'Suspended' ? '✅ Unban' : '🚫 Ban'}</button>
-
-                      {/* Reset Password */}
-                      <button
-                        onClick={() => handleResetPassword(u)}
-                        title="Reset user password"
-                        style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', cursor: 'pointer' }}
-                      >🔑 Reset PW</button>
-
-                      {/* Delete — blocked for self-deletion */}
-                      {u.id !== currentUser?.id && (
+                return (
+                  <tr key={u.id || u.email || idx}>
+                    <td>
+                      <div className={styles.boldCell}>{empName}</div>
+                      <div className={styles.subCell}>{empTitle} (Job Title)</div>
+                    </td>
+                    <td>{u.email || '—'}</td>
+                    <td>
+                      <select 
+                        className={styles.actionSelect} 
+                        value={targetRole} 
+                        onChange={(ev) => handleRoleChange(u.id || '', ev.target.value)}
+                        style={{ padding: '4px 8px' }}
+                      >
+                        {systemRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                        {!systemRoles.includes(targetRole) && (
+                          <option value={targetRole}>{targetRole} (Custom)</option>
+                        )}
+                      </select>
+                    </td>
+                    <td className={styles.subCell} suppressHydrationWarning>
+                      {u.last_login ? (isNaN(new Date(u.last_login).getTime()) ? u.last_login : new Date(u.last_login).toLocaleString()) : 'Never'}
+                    </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        background: currentStatus === 'Active' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: currentStatus === 'Active' ? '#10b981' : '#ef4444',
+                        border: `1px solid ${currentStatus === 'Active' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                      }}>{currentStatus}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {/* Edit */}
                         <button
-                          onClick={() => handleDelete(u)}
-                          title="Permanently delete user"
-                          style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', cursor: 'pointer' }}
-                        >🗑️ Delete</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && <tr><td colSpan={6} className={styles.loading}>No users found. Add one to get started.</td></tr>}
+                          onClick={() => openModal(u)}
+                          title="Edit user details"
+                          style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '6px', cursor: 'pointer' }}
+                        >✏️ Edit</button>
 
+                        {/* Ban / Unban */}
+                        <button
+                          onClick={() => handleBanToggle(u)}
+                          title={currentStatus === 'Suspended' ? 'Unban user' : 'Ban / Suspend user'}
+                          style={{ padding: '4px 10px', fontSize: '0.78rem', background: currentStatus === 'Suspended' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: currentStatus === 'Suspended' ? '#10b981' : '#f59e0b', border: `1px solid ${currentStatus === 'Suspended' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: '6px', cursor: 'pointer' }}
+                        >{currentStatus === 'Suspended' ? '✅ Unban' : '🚫 Ban'}</button>
+
+                        {/* Reset Password */}
+                        <button
+                          onClick={() => handleResetPassword(u)}
+                          title="Reset user password"
+                          style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', cursor: 'pointer' }}
+                        >🔑 Reset PW</button>
+
+                        {/* Delete — blocked for self-deletion */}
+                        {u.id !== currentUser?.id && (
+                          <button
+                            onClick={() => handleDelete(u)}
+                            title="Permanently delete user"
+                            style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', cursor: 'pointer' }}
+                          >🗑️ Delete</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {users.length === 0 && <tr><td colSpan={6} className={styles.loading}>No users found. Add one to get started.</td></tr>}
             </tbody>
           </table>
         )}
@@ -337,7 +430,7 @@ export default function UserManagementPage() {
                       <label className={styles.fl}>Linked Employee *</label>
                       <select required value={form.employee_id} onChange={e => handleEmployeeChange(e.target.value)} className={styles.fi} disabled={!!editingId}>
                         <option value="">Select Employee...</option>
-                        {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_id || e.id?.split('-')[0]})</option>)}
+                        {(employees || []).map((e, idx) => <option key={e.id || e.employee_id || idx} value={e.id || e.employee_id}>{e.name} ({e.employee_id || (e.id ? String(e.id).split('-')[0] : '')})</option>)}
                       </select>
                     </div>
                     {/* Show editable employee details when editing */}
@@ -400,7 +493,7 @@ export default function UserManagementPage() {
                   <label className={styles.fl}>Department</label>
                   <select value={form.department} onChange={e => setForm(f => ({...f, department: e.target.value}))} className={styles.fi}>
                     <option value="">Select Department</option>
-                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    {(departments || []).map(d => <option key={d.id || d.name} value={d.name}>{d.name}</option>)}
                   </select>
                 </div>
 

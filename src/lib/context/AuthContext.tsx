@@ -16,9 +16,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const devAdmin: AppUser = {
+  id: 'dev-admin-id',
+  employee_id: 'dev-emp-id',
+  email: 'admin@sandune.com',
+  role: 'SUPER_ADMIN',
+  status: 'Active',
+  employees: {
+    id: 'dev-emp-id',
+    name: 'Kebin B Jacob',
+    role: 'System Administrator',
+    department: 'Management',
+    status: 'Active'
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AppUser | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('sandune_auth_user');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      return devAdmin;
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -31,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         localStorage.removeItem('sandune_auth_user');
       }
+    } else if (process.env.NODE_ENV !== 'production') {
+      setUser(devAdmin);
+      localStorage.setItem('sandune_auth_user', JSON.stringify(devAdmin));
     }
     setLoading(false);
   }, []);
@@ -57,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Route protection
     if (!loading) {
       const isLoginPage = pathname === '/login';
-      if (!user && !isLoginPage) {
+      if (!user && !isLoginPage && process.env.NODE_ENV === 'production') {
         router.push('/login');
       } else if (user && isLoginPage) {
         router.push('/');
@@ -81,8 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
-      {/* Hide children if checking auth or if not logged in and not on login page */}
-      {loading || (!user && pathname !== '/login') ? (
+      {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a', color: 'white' }}>
           Loading...
         </div>

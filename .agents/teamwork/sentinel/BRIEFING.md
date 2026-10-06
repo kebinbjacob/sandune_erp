@@ -5,7 +5,7 @@ Oversee the root cause analysis and resolution of the Next.js frontend rendering
 
 ## 🔒 My Identity
 - Archetype: sentinel
-- Working directory: C:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\sentinel
+- Working directory: C:\Users\kelvin babu\Downloads\sandune-main\sandune-main\.agents\teamwork\sentinel
 - Orchestrator: 8bc830c2-edc1-42ef-a90b-57f945ee4dbf
 - Victory Auditor: c6826da1-814a-43e7-bd25-8388925fa29a
 

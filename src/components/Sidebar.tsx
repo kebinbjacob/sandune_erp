@@ -1,14 +1,14 @@
-"use client";
+﻿'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useState, useEffect } from 'react';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const navGroups = [
@@ -31,7 +31,7 @@ const navGroups = [
       },
       { 
         name: "Attendance", 
-        icon: "⏰",
+        icon: "⏱️",
         subItems: [
           { name: "Daily Attendance", href: "/attendance" },
           { name: "Timesheets", href: "/attendance/timesheets" },
@@ -41,7 +41,7 @@ const navGroups = [
       },
       { 
         name: "Leave", 
-        icon: "🏖️",
+        icon: "✈️",
         subItems: [
           { name: "Leave Requests", href: "/leave" },
           { name: "Apply Leave", href: "/leave/apply" },
@@ -56,6 +56,13 @@ const navGroups = [
           { name: "Schedules", href: "/shifts/schedules" },
         ]
       },
+      {
+        name: "Documents",
+        icon: "📁",
+        subItems: [
+          { name: "Employee Records", href: "/documents" }
+        ]
+      }
     ]
   },
   {
@@ -71,14 +78,14 @@ const navGroups = [
       },
       { 
         name: "Tasks", 
-        icon: "✅",
+        icon: "📋",
         subItems: [
           { name: "All Tasks", href: "/tasks" },
           { name: "Kanban Board", href: "/tasks/board" },
         ]
       },
       { name: "Daily Reports", href: "/reports/site", icon: "📝" },
-      { name: "Safety", href: "/safety", icon: "🦺" },
+      { name: "Safety", href: "/safety", icon: "🛡️" },
     ]
   },
   {
@@ -94,7 +101,7 @@ const navGroups = [
     items: [
       { name: "Clients", href: "/clients", icon: "🤝" },
       { name: "Contractors", href: "/contractors", icon: "👷" },
-      { name: "Vendors", href: "/vendors", icon: "🏭" },
+      { name: "Vendors", href: "/vendors", icon: "🏢" },
     ]
   },
   {
@@ -102,7 +109,7 @@ const navGroups = [
     items: [
       { name: "Expenses", href: "/expenses", icon: "💸" },
       { name: "Payroll", href: "/payroll", icon: "💰" },
-      { name: "User Management", href: "/settings/users", icon: "🔐", adminOnly: true },
+      { name: "User Management", href: "/settings/users", icon: "🔑", adminOnly: true },
       { 
         name: "Settings", 
         icon: "⚙️",
@@ -192,7 +199,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           >
                             <span className={styles.icon}>{item.icon}</span>
                             <span>{item.name}</span>
-                            <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>›</span>
+                            <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>▼</span>
                           </button>
                         ) : (
                           <Link 

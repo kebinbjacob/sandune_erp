@@ -110,6 +110,14 @@ const navGroups = [
       { name: "Expenses", href: "/expenses", icon: "💸" },
       { name: "Payroll", href: "/payroll", icon: "💰" },
       { name: "User Management", href: "/settings/users", icon: "🔑", adminOnly: true },
+      {
+        name: "Company Documents",
+        icon: "📁",
+        subItems: [
+          { name: "Company Files", href: "/admin/documents" }
+        ],
+        adminOnly: true
+      },
       { 
         name: "Settings", 
         icon: "⚙️",
